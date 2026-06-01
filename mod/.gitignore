@@ -1,0 +1,14 @@
+# Gradle / build outputs
+.gradle/
+build/
+versions/*/build/
+run/
+
+# Stonecutter in-place generated state (the shared src is the source of truth)
+*.stonecutter
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store

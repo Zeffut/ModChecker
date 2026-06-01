@@ -1,0 +1,24 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "modchecker"
+version = "${version}"
+displayName = "ModChecker"
+description = "Reports the client's loaded mod list to a ModChecker-equipped server."
+authors = "zeffut"
+
+[[mods."modchecker".dependencies]]
+modId = "neoforge"
+type = "required"
+versionRange = "[0,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[mods."modchecker".dependencies]]
+modId = "minecraft"
+type = "required"
+versionRange = "[0,)"
+ordering = "NONE"
+side = "CLIENT"

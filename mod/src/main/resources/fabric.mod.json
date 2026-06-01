@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "modchecker",
+  "version": "${version}",
+  "name": "ModChecker",
+  "description": "Reports the client's loaded mod list to a ModChecker-equipped server.",
+  "authors": [
+    "zeffut"
+  ],
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "fr.zeffut.modchecker.fabric.ModCheckerFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "fabric-api": "*",
+    "minecraft": "${minecraft}"
+  }
+}
