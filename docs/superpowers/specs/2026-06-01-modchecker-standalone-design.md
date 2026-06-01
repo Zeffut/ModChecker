@@ -112,8 +112,9 @@ Base = version **saison-3** (la plus aboutie : GUI + tab-complete), **découplé
 - **`ModListCodec`** — décodage **et encodage** du format réseau MC (VarInt + UTF-8), sans
   dépendance Bukkit : `decode(byte[])` pour la liste reçue, `encode(String)` pour le hello envoyé.
 - **`ModCheckerGUI`** — repris tel quel (aucun couplage Zeffut).
-- **Dépendances :** Purpur API (`provided`) uniquement. **ProtocolLib retiré.** Java 21, Maven +
-  shade (pour embarquer Gson).
+- **Dépendances :** Paper API 1.21.11 (`provided`, compatible Purpur — aucune API Purpur utilisée).
+  **ProtocolLib retiré.** Java 21, Maven + shade (pour embarquer Gson). NB : `purpur-api 1.21.11`
+  n'étant plus publié sur le Maven Purpur, on dépend de `paper-api` (Purpur ⊃ Paper).
 
 ### `config.yml` (rend générique ce qui était en dur)
 

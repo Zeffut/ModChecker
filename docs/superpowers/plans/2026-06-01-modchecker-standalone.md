@@ -6,7 +6,7 @@
 
 **Architecture:** Monorepo `ModChecker/` avec `mod/` (Gradle multi-projet, sous-modules `fabric` et `neoforge` sans framework) et `plugin/` (Maven, Purpur). Mod et plugin partagent un contrat réseau figé en **handshake** : au join, le serveur envoie un paquet S2C `modchecker:hello` (preuve de présence du plugin) ; le client n'envoie sa liste de mods (C2S `modchecker:modlist`, String MC = tableau JSON `[{id,name,version}]`) **qu'en réponse à ce hello**. Le plugin découple toute logique Zeffut-SMP (combat-tag retiré, ProtocolLib retiré, branding dans `config.yml`).
 
-**Tech Stack:** Java 21 · Plugin : Maven, Purpur API 1.21.11, Gson (shaded), JUnit 5 · Mod : Gradle, Fabric Loom (Fabric), ModDevGradle (NeoForge), MC 1.21.11.
+**Tech Stack:** Java 21 · Plugin : Maven, Paper API 1.21.11 (compatible Purpur), Gson (shaded), JUnit 5 · Mod : Gradle, Fabric Loom (Fabric), ModDevGradle (NeoForge), MC 1.21.11.
 
 **Sources de référence (à copier/adapter, restent intactes) :**
 - Plugin base : `/Users/zeffut/Desktop/Projets/Zeffut-SMP/saison-3/Plugin/src/main/java/fr/zeffut/zeffsmp/ModChecker.java` et `ModCheckerGUI.java`
@@ -173,15 +173,17 @@ git commit -m "docs: contrat réseau (PROTOCOL.md) et README initial"
 
     <repositories>
         <repository>
-            <id>purpur</id>
-            <url>https://repo.purpurmc.org/snapshots</url>
+            <id>papermc</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
     </repositories>
 
     <dependencies>
+        <!-- Paper API (Purpur ⊃ Paper) : le code n'utilise aucune API spécifique Purpur, et
+             purpur-api 1.21.11 n'est plus publié sur le Maven Purpur. Le jar tourne sur Purpur. -->
         <dependency>
-            <groupId>org.purpurmc.purpur</groupId>
-            <artifactId>purpur-api</artifactId>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
             <version>1.21.11-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
@@ -929,8 +931,8 @@ yarn_mappings=1.21.11+build.4
 loader_version=0.18.6
 fabric_version=0.141.3+1.21.11
 
-# NeoForge — vérifier la version exacte pour 1.21.11 (voir Step 3)
-neoforge_version=21.11.0
+# NeoForge pour MC 1.21.11 (schéma 21.11.x) — dernier build vérifié : 21.11.42
+neoforge_version=21.11.42
 ```
 
 - [ ] **Step 3 : Vérifier la version NeoForge disponible pour 1.21.11**
