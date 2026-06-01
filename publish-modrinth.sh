@@ -30,8 +30,8 @@ UA="Zeffut/ModChecker/2.0.0 (tom77ds@gmail.com)"
 API="https://api.modrinth.com/v2"
 
 # --- Projets Modrinth ---
-MOD_PROJECT_ID="${MOD_PROJECT_ID:-pZZSQM2X}"     # zeffut-mod-checker (type mod) — déjà créé
-PLUGIN_PROJECT_ID="${PLUGIN_PROJECT_ID:-}"       # projet type "plugin" — à renseigner si dispo
+MOD_PROJECT_ID="${MOD_PROJECT_ID:-pZZSQM2X}"     # zeffut-mod-checker (mod)
+PLUGIN_PROJECT_ID="${PLUGIN_PROJECT_ID:-oIAAfSll}"  # zeffut-mod-checker-plugin (plugin)
 
 MOD_VERSION="2.0.0"
 PLUGIN_VERSION="1.0.0"
@@ -58,8 +58,10 @@ upload_version() {
 JSON
 )
   if $PUBLISH; then
+    # --form-string (et NON -F) pour le champ data : sinon curl interprète ';' '@' '<' dans le
+    # JSON (le changelog contient des ';') et casse le payload → 400 "EOF while parsing string".
     if curl -fsS -X POST -H "Authorization: $MODRINTH_TOKEN" -H "User-Agent: $UA" \
-         -F "data=$data" -F "file=@$file" "$API/version" >/dev/null; then
+         --form-string "data=$data" -F "file=@$file" "$API/version" >/dev/null; then
       echo "  ✔ publié : $name"
     else
       echo "  ✘ échec  : $name" >&2; return 1
