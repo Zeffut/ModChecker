@@ -14,3 +14,8 @@ build/
 
 # Docs internes de planification (hors périmètre du repo public)
 docs/superpowers/
+
+# Secrets / env (NE JAMAIS committer — repo public)
+.env
+*.env
+!.env.example
