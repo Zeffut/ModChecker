@@ -101,7 +101,8 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
                 newModsFound = true;
             }
         }
-        if (newModsFound) save();
+        // onPluginMessageReceived tourne sur le thread réseau (netty) → écriture disque hors-thread
+        if (newModsFound) Bukkit.getScheduler().runTaskAsynchronously(plugin, this::save);
 
         List<String> bannedMods = new ArrayList<>();
         for (ModInfo mod : mods) {
@@ -304,7 +305,8 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         }
     }
 
-    private void save() {
+    /** synchronized : sérialise les écritures (appels possibles depuis main thread ET async). */
+    private synchronized void save() {
         try (FileWriter writer = new FileWriter(modsFile)) {
             gson.toJson(modStatus, writer);
         } catch (IOException e) {

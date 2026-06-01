@@ -31,5 +31,11 @@ public class ModCheckerPlugin extends JavaPlugin {
         getLogger().info("ModChecker activé (channel " + ModChecker.CHANNEL + ").");
     }
 
+    @Override
+    public void onDisable() {
+        // Annule les tâches de grâce en attente (évite un kick après désactivation).
+        getServer().getScheduler().cancelTasks(this);
+    }
+
     public ModChecker getModChecker() { return modChecker; }
 }
