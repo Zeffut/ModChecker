@@ -145,4 +145,32 @@ class ModCheckDecisionTest {
 
         assertFalse(result.isShouldDisconnect(), "UNKNOWN status should not disconnect");
     }
+
+    // -----------------------------------------------------------------------
+    // Tests for shouldKickPendingPlayer (grace-period decision logic)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void pendingPlayer_kickWithoutMod_notExempt_shouldKick() {
+        assertTrue(ModCheckDecision.shouldKickPendingPlayer(true, true, false),
+                "Pending non-exempt player should be kicked when kick-without-mod=true");
+    }
+
+    @Test
+    void pendingPlayer_kickWithoutMod_exempt_shouldNotKick() {
+        assertFalse(ModCheckDecision.shouldKickPendingPlayer(true, true, true),
+                "Exempt player must NOT be kicked even with kick-without-mod=true");
+    }
+
+    @Test
+    void pendingPlayer_kickWithoutModFalse_shouldNotKick() {
+        assertFalse(ModCheckDecision.shouldKickPendingPlayer(true, false, false),
+                "kick-without-mod=false → no kick even if pending");
+    }
+
+    @Test
+    void notPendingPlayer_shouldNotKick() {
+        assertFalse(ModCheckDecision.shouldKickPendingPlayer(false, true, false),
+                "Player no longer pending (sent modlist in time) → no kick");
+    }
 }

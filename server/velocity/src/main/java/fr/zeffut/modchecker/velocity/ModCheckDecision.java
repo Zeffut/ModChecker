@@ -22,7 +22,7 @@ public final class ModCheckDecision {
      *
      * @param rawPayload       the raw bytes received on {@code modchecker:modlist}
      * @param statusMap        the configured status map
-     * @param kickMessage      formatted message template (use {@link ModCheckerConfig#formatKickMessage})
+     * @param kickMessage      formatted message template ({@code {mods}} is substituted with banned mod ids)
      * @return a {@link Result}
      */
     public static Result evaluate(byte[] rawPayload,
@@ -50,6 +50,23 @@ public final class ModCheckDecision {
         // Format the kick message by substituting {mods}
         String msg = kickMessage.replace("{mods}", String.join(", ", banned));
         return Result.disconnect(mods, banned, msg);
+    }
+
+    /**
+     * Pure decision: should a pending player (one that never sent a modlist) be kicked?
+     * <p>
+     * This is the testable core of the grace-period enforcement. The proxy-side scheduler
+     * glue (fetching the online player, calling {@code disconnect}) is not covered here.
+     *
+     * @param isStillPending    true if the player's UUID is still in the pending set
+     * @param kickWithoutMod    value of the {@code kick-without-mod} config flag
+     * @param isExempt          true if the player's UUID is in the exempt-players list
+     * @return true if the player should be disconnected for missing mod
+     */
+    public static boolean shouldKickPendingPlayer(boolean isStillPending,
+                                                   boolean kickWithoutMod,
+                                                   boolean isExempt) {
+        return isStillPending && kickWithoutMod && !isExempt;
     }
 
     // ---- Result DTO ----

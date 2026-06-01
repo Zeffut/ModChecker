@@ -2,6 +2,7 @@ package fr.zeffut.modchecker.velocity;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -17,7 +18,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
-import java.util.logging.Logger;
 
 /**
  * Loads and persists the ModChecker Velocity configuration.
@@ -115,6 +115,21 @@ public final class ModCheckerConfig {
             if (obj.has("kick-message"))     kickMessage    = obj.get("kick-message").getAsString();
             if (obj.has("grace-period-seconds")) graceSeconds = obj.get("grace-period-seconds").getAsInt();
             if (obj.has("kick-without-mod")) kickWithoutMod = obj.get("kick-without-mod").getAsBoolean();
+            if (obj.has("exempt-players")) {
+                Set<String> loaded = new HashSet<>();
+                JsonArray arr = obj.getAsJsonArray("exempt-players");
+                for (JsonElement el : arr) {
+                    try {
+                        String uuidStr = el.getAsString().trim();
+                        // Validate UUID format before accepting
+                        java.util.UUID.fromString(uuidStr);
+                        loaded.add(uuidStr);
+                    } catch (Exception ignored) {
+                        logger.warn("Skipping invalid UUID in exempt-players: {}", el);
+                    }
+                }
+                this.exemptPlayers = loaded;
+            }
         } catch (Exception e) {
             logger.error("Failed to load config.json, using defaults", e);
         }
@@ -127,6 +142,7 @@ public final class ModCheckerConfig {
             obj.addProperty("kick-message",         DEFAULT_KICK_MESSAGE);
             obj.addProperty("grace-period-seconds", DEFAULT_GRACE_SECONDS);
             obj.addProperty("kick-without-mod",     DEFAULT_KICK_WITHOUT_MOD);
+            obj.add("exempt-players", new JsonArray());
             GSON.toJson(obj, w);
             logger.info("Created default config.json");
         } catch (IOException e) {
@@ -143,8 +159,4 @@ public final class ModCheckerConfig {
     public int     getGraceSeconds()   { return graceSeconds; }
     public boolean isKickWithoutMod()  { return kickWithoutMod; }
 
-    /** Formats the kick message, substituting {mods} with the comma-joined list of banned mods. */
-    public String formatKickMessage(java.util.List<String> bannedMods) {
-        return kickMessage.replace("{mods}", String.join(", ", bannedMods));
-    }
 }

@@ -2,6 +2,7 @@ package fr.zeffut.modchecker.velocity;
 
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -16,7 +17,10 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * ModChecker — Velocity proxy plugin.
@@ -48,6 +52,13 @@ public final class ModCheckerVelocity {
     private final Path        dataDirectory;
 
     private ModCheckerConfig config;
+
+    /**
+     * Players who have joined but have not yet sent a modlist.
+     * Populated on first join; removed when the modlist arrives or the player disconnects.
+     * A scheduled grace-period task checks this set and kicks if kick-without-mod is enabled.
+     */
+    private final Set<UUID> pendingPlayers = ConcurrentHashMap.newKeySet();
 
     @Inject
     public ModCheckerVelocity(ProxyServer proxy,
@@ -99,6 +110,32 @@ public final class ModCheckerVelocity {
             logger.debug("Could not send modchecker:hello to {} (client may not have mod registered)",
                     player.getUsername());
         }
+
+        // Track this player as pending (no modlist received yet) and schedule a grace-period check
+        UUID playerId = player.getUniqueId();
+        pendingPlayers.add(playerId);
+        int graceSeconds = config.getGraceSeconds();
+        proxy.getScheduler()
+                .buildTask(this, () -> {
+                    pendingPlayers.remove(playerId);
+                    if (!config.isKickWithoutMod()) {
+                        return;
+                    }
+                    // Re-fetch the player — they may have disconnected during the grace period
+                    proxy.getPlayer(playerId).ifPresent(p -> {
+                        if (config.getExemptPlayers().contains(playerId.toString())) {
+                            logger.debug("Pending player {} is exempt, not kicking for missing mod", p.getUsername());
+                            return;
+                        }
+                        logger.warn("Player {} did not send a modlist within {}s — disconnecting",
+                                p.getUsername(), graceSeconds);
+                        Component reason = buildKickComponent(
+                                "[" + config.getServerName() + "] You must have the ModChecker mod installed.");
+                        p.disconnect(reason);
+                    });
+                })
+                .delay(graceSeconds, TimeUnit.SECONDS)
+                .schedule();
     }
 
     // -----------------------------------------------------------------------
@@ -119,6 +156,9 @@ public final class ModCheckerVelocity {
         if (!(event.getSource() instanceof Player player)) {
             return;
         }
+
+        // Player sent a modlist — remove from pending (grace-period timer no longer relevant)
+        pendingPlayers.remove(player.getUniqueId());
 
         // Check exemptions
         String uuidStr = player.getUniqueId().toString();
@@ -150,16 +190,25 @@ public final class ModCheckerVelocity {
         if (decision.isShouldDisconnect()) {
             logger.warn("Disconnecting {} — banned mods: {}",
                     player.getUsername(), decision.getBannedMods());
-            Component reason = buildKickComponent(decision.getDisconnectMessage(), decision.getBannedMods());
+            Component reason = buildKickComponent(decision.getDisconnectMessage());
             player.disconnect(reason);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Player disconnect → clean up pending state
+    // -----------------------------------------------------------------------
+
+    @Subscribe
+    public void onDisconnect(DisconnectEvent event) {
+        pendingPlayers.remove(event.getPlayer().getUniqueId());
     }
 
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
-    private Component buildKickComponent(String message, List<String> bannedMods) {
+    private Component buildKickComponent(String message) {
         return Component.text()
                 .append(Component.text("[ModChecker] ", NamedTextColor.RED))
                 .append(Component.text(message, NamedTextColor.WHITE))
