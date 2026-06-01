@@ -13,6 +13,13 @@
     <artifactId>modchecker-paper</artifactId>
     <packaging>jar</packaging>
 
+    <properties>
+        <!-- Version de paper-api compilée. Le jar final (build contre 1.21.11) tourne sur toutes
+             les versions >= 1.21.11 via la stabilité de l'API Bukkit. Surchargeable pour vérifier
+             la compat : -Dpaper.api.version=26.1.2.build.67-stable (nécessite JDK 25). -->
+        <paper.api.version>1.21.11-R0.1-SNAPSHOT</paper.api.version>
+    </properties>
+
     <dependencies>
         <!-- Common module (ModInfo, ModListCodec, ModStatus, BanPolicy) -->
         <dependency>
@@ -26,7 +33,7 @@
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.21.11-R0.1-SNAPSHOT</version>
+            <version>${paper.api.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
