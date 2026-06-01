@@ -1,0 +1,20 @@
+name: ModChecker
+version: 1.0.0
+main: fr.zeffut.modchecker.ModCheckerPlugin
+api-version: "1.21"
+description: Vérifie les mods des joueurs et bannit ceux interdits
+authors: [Zeffut]
+
+commands:
+  mods:
+    description: Gestion des mods autorisés/bannis
+    usage: /mods <list|player|allow|ban|reset>
+    permission: modchecker.admin
+
+permissions:
+  modchecker.admin:
+    description: Accès aux commandes de gestion des mods
+    default: op
+  modchecker.bypass:
+    description: Exempte le joueur du mod-checker
+    default: false

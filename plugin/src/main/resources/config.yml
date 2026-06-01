@@ -1,0 +1,11 @@
+# Nom affiché en en-tête des messages de kick
+server-name: "Mon Serveur"
+# Kicker les joueurs qui n'envoient pas leur liste de mods (mod-checker absent)
+kick-without-mod: false
+# Délai d'attente (secondes) avant de considérer le mod-checker absent
+grace-period-seconds: 5
+# Permission qui exempte du mod-checker (les OP sont toujours exemptés)
+bypass-permission: "modchecker.bypass"
+messages:
+  banned-mod: "Mod(s) interdit(s) détecté(s) :"
+  missing-mod: "Le mod ModChecker est requis. Installe-le et reconnecte-toi."
