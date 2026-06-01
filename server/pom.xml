@@ -16,7 +16,7 @@
     <modules>
         <module>common</module>
         <module>paper</module>
-        <!-- velocity ajouté en Phase 2 -->
+        <module>velocity</module>
     </modules>
     <repositories>
         <repository><id>papermc</id><url>https://repo.papermc.io/repository/maven-public/</url></repository>

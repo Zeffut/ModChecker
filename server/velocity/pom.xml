@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fr.zeffut</groupId>
+        <artifactId>modchecker-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>modchecker-velocity</artifactId>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- Velocity API (provided — the proxy ships it) -->
+        <dependency>
+            <groupId>com.velocitypowered</groupId>
+            <artifactId>velocity-api</artifactId>
+            <version>3.4.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Common module (ModInfo, ModListCodec, ModStatus, BanPolicy) -->
+        <dependency>
+            <groupId>fr.zeffut</groupId>
+            <artifactId>modchecker-common</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- Gson (also provided by Velocity, but we shade to be safe) -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- JUnit for unit tests -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>ModChecker-velocity-${project.version}</finalName>
+        <plugins>
+            <!-- Annotation processor for velocity-plugin.json generation -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.velocitypowered</groupId>
+                            <artifactId>velocity-api</artifactId>
+                            <version>3.4.0</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+            <!-- Shade: bundle common + gson into fat jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
+                    <relocations>
+                        <relocation>
+                            <pattern>com.google.gson</pattern>
+                            <shadedPattern>fr.zeffut.modchecker.libs.gson</shadedPattern>
+                        </relocation>
+                    </relocations>
+                    <!-- Exclude Velocity API from shading (it's provided) -->
+                    <artifactSet>
+                        <excludes>
+                            <exclude>com.velocitypowered:velocity-api</exclude>
+                        </excludes>
+                    </artifactSet>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
