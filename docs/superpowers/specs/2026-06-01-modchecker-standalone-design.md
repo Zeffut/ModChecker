@@ -48,27 +48,36 @@ ModChecker/
     └── src/main/...
 ```
 
-### Flux (inchangé — c'est ce qui fonctionne déjà)
+### Flux (handshake — le client ne parle qu'à un serveur qui a le plugin)
 
-1. Le joueur rejoint → le mod client liste tous ses mods chargés (`id`, `name`, `version`).
-2. Sérialisation JSON → envoi d'**un seul paquet** sur le channel `modchecker:modlist`.
-3. Le plugin reçoit, parse, enregistre les mods inconnus (`UNKNOWN`), kick si un mod est `BANNED`
-   (ou si le mod-checker est absent et que `kick-without-mod` est activé).
+1. Le joueur rejoint.
+2. **Le serveur** envoie un paquet `modchecker:hello` (S2C) — preuve que le plugin est présent.
+3. **À réception du hello**, le mod client liste ses mods (`id`, `name`, `version`), sérialise en
+   JSON et l'envoie sur `modchecker:modlist` (C2S).
+4. Le plugin reçoit, parse, enregistre les mods inconnus (`UNKNOWN`), kick si un mod est `BANNED`.
+5. Si le client ne reçoit **jamais** de hello (plugin absent) → il n'envoie rien. Un client vanilla
+   reçoit le hello sur un channel inconnu et l'ignore silencieusement.
+6. Si le serveur ne reçoit pas de liste dans le délai (`grace-period-seconds`) → kick si
+   `kick-without-mod` est activé (= le joueur n'a pas le mod).
+
+**Pourquoi un handshake :** sans lui, le mod enverrait sa liste à n'importe quel serveur (fuite
+d'info inutile) et ne saurait pas si le serveur l'écoute. Le hello inverse le déclencheur : le
+client ne répond qu'à un serveur qui s'est annoncé.
 
 ## Contrat réseau (`PROTOCOL.md`)
 
-Le channel et le format sont un **contrat figé** partagé par le mod et le plugin. Le channel
-**n'est pas** dans le config serveur : le mod est compilé avec, les deux côtés doivent rester
-synchrones.
+Les channels et le format sont un **contrat figé** partagé par le mod et le plugin. Ils **ne sont
+pas** dans le config serveur : le mod est compilé avec, les deux côtés doivent rester synchrones.
 
-- **Channel :** `modchecker:modlist` (namespace générique, remplace `zeffsmp:modlist`).
-- **Sens :** Client → Serveur (C2S), un seul paquet, envoyé au join.
-- **Payload :** un **String MC unique** (VarInt longueur + UTF-8) contenant un tableau JSON :
+- **`modchecker:hello`** — **Serveur → Client (S2C)**, envoyé au join. Payload : la version du
+  plugin (String MC), pour compat future. Sert de preuve de présence du plugin.
+- **`modchecker:modlist`** — **Client → Serveur (C2S)**, envoyé en réponse au hello. Payload : un
+  **String MC unique** (VarInt longueur + UTF-8) contenant un tableau JSON :
   ```json
   [{"id":"fabric-api","name":"Fabric API","version":"0.x.y"}, ...]
   ```
-- Les deux loaders sérialisent exactement ce String unique → le plugin décode pareil dans les deux
-  cas (méthode `readMcString` : VarInt + UTF-8).
+- Les deux loaders et le plugin encodent/décodent le **même format binaire** (VarInt + UTF-8) :
+  côté plugin, `ModListCodec.encode/decode` ; côté mod, codecs String natifs.
 
 ## Composant : mod client (`mod/`)
 
@@ -76,12 +85,12 @@ Gradle multi-projet, **sans Architectury**. La logique est ~10 lignes ; le bout 
 format) est minuscule et documenté dans `PROTOCOL.md`, donc duplication assumée plutôt qu'un
 framework.
 
-- **`fabric/`** — reprise directe de l'existant (`ModCheckerClient` + `ModListPayload`), namespace
-  mis à jour. `FabricLoader.getInstance().getAllMods()` pour lister, `ClientPlayNetworking.send`
-  pour envoyer. Cible Fabric 1.21.11 / Java 21.
-- **`neoforge/`** — équivalent NeoForge : `ModList.get().getMods()` pour lister,
-  `PayloadRegistrar.optional(...)` pour autoriser l'envoi vers un serveur **non-NeoForge** (Purpur),
-  même String unique sur le fil.
+- **`fabric/`** — deux payloads : reçoit `modchecker:hello` (S2C) via un receiver global, et **en
+  réponse** liste les mods (`FabricLoader.getInstance().getAllMods()`) et envoie `modchecker:modlist`
+  (C2S). Cible Fabric 1.21.11 / Java 21.
+- **`neoforge/`** — équivalent NeoForge : `PayloadRegistrar.optional(...)` pour dialoguer avec un
+  serveur **non-NeoForge** (Purpur) ; handler `playToClient` sur le hello qui déclenche l'envoi de
+  `ModList.get().getMods()` sur `modchecker:modlist`. Même format binaire sur le fil.
 
 **Gotcha NeoForge :** NeoForge négocie ses payloads par défaut et refuse d'envoyer à un serveur
 "vanilla"/Bukkit. On enregistre le payload en `optional()` pour débloquer l'envoi vers Purpur.
@@ -95,10 +104,13 @@ Pas de tests sur le mod : trop fin (lister + envoyer).
 Base = version **saison-3** (la plus aboutie : GUI + tab-complete), **découplée de Zeffut-SMP**.
 
 - **`ModCheckerPlugin`** (nouveau) — vrai `JavaPlugin` autonome : instancie `ModChecker` +
-  `ModCheckerGUI`, enregistre le channel entrant, la commande `/mods`, le listener join/quit, charge
-  `config.yml`.
+  `ModCheckerGUI`, enregistre le channel **entrant** `modchecker:modlist` et le channel **sortant**
+  `modchecker:hello`, la commande `/mods`, le listener join/quit, charge `config.yml`.
 - **`ModChecker`** — repris, avec **retrait du couplage** `plugin.getCombatManager().removeCombat()`
-  (spécifique Zeffut → supprimé). Lit ses réglages depuis `config.yml`.
+  (spécifique Zeffut → supprimé). Lit ses réglages depuis `config.yml`. Au join d'un joueur, envoie
+  le paquet `modchecker:hello` (handshake) puis attend la liste de mods en réponse.
+- **`ModListCodec`** — décodage **et encodage** du format réseau MC (VarInt + UTF-8), sans
+  dépendance Bukkit : `decode(byte[])` pour la liste reçue, `encode(String)` pour le hello envoyé.
 - **`ModCheckerGUI`** — repris tel quel (aucun couplage Zeffut).
 - **Dépendances :** Purpur API (`provided`) uniquement. **ProtocolLib retiré.** Java 21, Maven +
   shade (pour embarquer Gson).
