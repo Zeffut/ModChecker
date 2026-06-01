@@ -29,8 +29,8 @@ public class ModCheckerGUI implements Listener {
     // ─── GUI liste des mods ──────────────────────────────────────────────────
 
     public void openModList(Player viewer, int page) {
-        List<Map.Entry<String, String>> entries = new ArrayList<>(modChecker.getModStatus().entrySet());
-        entries.removeIf(e -> "ALLOWED".equals(e.getValue()));
+        List<Map.Entry<String, ModStatus>> entries = new ArrayList<>(modChecker.getModStatus().entrySet());
+        entries.removeIf(e -> e.getValue() == ModStatus.ALLOWED);
         entries.sort(Comparator.comparing(Map.Entry::getKey));
 
         int totalPages = Math.max(1, (int) Math.ceil((double) entries.size() / PAGE_SIZE));
@@ -45,18 +45,18 @@ public class ModCheckerGUI implements Listener {
 
         // Remplir les mods
         for (int i = start; i < end; i++) {
-            Map.Entry<String, String> entry = entries.get(i);
+            Map.Entry<String, ModStatus> entry = entries.get(i);
             String modId = entry.getKey();
-            String status = entry.getValue();
+            ModStatus status = entry.getValue();
 
             Material mat = switch (status) {
-                case "ALLOWED" -> Material.LIME_STAINED_GLASS_PANE;
-                case "BANNED" -> Material.RED_STAINED_GLASS_PANE;
+                case ALLOWED -> Material.LIME_STAINED_GLASS_PANE;
+                case BANNED -> Material.RED_STAINED_GLASS_PANE;
                 default -> Material.GRAY_STAINED_GLASS_PANE;
             };
             NamedTextColor color = switch (status) {
-                case "ALLOWED" -> NamedTextColor.GREEN;
-                case "BANNED" -> NamedTextColor.RED;
+                case ALLOWED -> NamedTextColor.GREEN;
+                case BANNED -> NamedTextColor.RED;
                 default -> NamedTextColor.GRAY;
             };
 
@@ -65,7 +65,7 @@ public class ModCheckerGUI implements Listener {
             if (meta != null) {
                 meta.displayName(Component.text(modId, color).decoration(TextDecoration.ITALIC, false));
                 meta.lore(List.of(
-                        Component.text("Statut : " + status, color).decoration(TextDecoration.ITALIC, false),
+                        Component.text("Statut : " + status.name(), color).decoration(TextDecoration.ITALIC, false),
                         Component.empty(),
                         Component.text("Clic gauche → Autoriser", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false),
                         Component.text("Clic droit → Bannir", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
@@ -103,16 +103,16 @@ public class ModCheckerGUI implements Listener {
 
         for (int i = start; i < end; i++) {
             ModInfo mod = mods.get(i);
-            String status = modChecker.getModStatus().getOrDefault(mod.id(), "UNKNOWN");
+            ModStatus status = modChecker.getModStatus().getOrDefault(mod.id(), ModStatus.UNKNOWN);
 
             Material mat = switch (status) {
-                case "ALLOWED" -> Material.LIME_STAINED_GLASS_PANE;
-                case "BANNED" -> Material.RED_STAINED_GLASS_PANE;
+                case ALLOWED -> Material.LIME_STAINED_GLASS_PANE;
+                case BANNED -> Material.RED_STAINED_GLASS_PANE;
                 default -> Material.GRAY_STAINED_GLASS_PANE;
             };
             NamedTextColor color = switch (status) {
-                case "ALLOWED" -> NamedTextColor.GREEN;
-                case "BANNED" -> NamedTextColor.RED;
+                case ALLOWED -> NamedTextColor.GREEN;
+                case BANNED -> NamedTextColor.RED;
                 default -> NamedTextColor.GRAY;
             };
 
@@ -122,7 +122,7 @@ public class ModCheckerGUI implements Listener {
                 meta.displayName(Component.text(mod.name(), NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
                 meta.lore(List.of(
                         Component.text(mod.id() + " v" + mod.version(), NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
-                        Component.text("Statut : " + status, color).decoration(TextDecoration.ITALIC, false),
+                        Component.text("Statut : " + status.name(), color).decoration(TextDecoration.ITALIC, false),
                         Component.empty(),
                         Component.text("Clic gauche → Autoriser", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false),
                         Component.text("Clic droit → Bannir", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
@@ -215,24 +215,24 @@ public class ModCheckerGUI implements Listener {
         String modId = getModIdFromEntries(holder.page, slot);
         if (modId == null) return;
 
-        String newStatus;
+        ModStatus newStatus;
         if (event.isShiftClick()) {
-            newStatus = "UNKNOWN";
+            newStatus = ModStatus.UNKNOWN;
         } else if (event.isRightClick()) {
-            newStatus = "BANNED";
+            newStatus = ModStatus.BANNED;
         } else {
-            newStatus = "ALLOWED";
+            newStatus = ModStatus.ALLOWED;
         }
 
         modChecker.setStatus(modId, newStatus);
 
         NamedTextColor color = switch (newStatus) {
-            case "ALLOWED" -> NamedTextColor.GREEN;
-            case "BANNED" -> NamedTextColor.RED;
+            case ALLOWED -> NamedTextColor.GREEN;
+            case BANNED -> NamedTextColor.RED;
             default -> NamedTextColor.GRAY;
         };
         player.sendMessage(Component.text(modId, NamedTextColor.WHITE)
-                .append(Component.text(" → " + newStatus, color)));
+                .append(Component.text(" → " + newStatus.name(), color)));
 
         // Rafraîchir le GUI
         openModList(player, holder.page);
@@ -255,32 +255,32 @@ public class ModCheckerGUI implements Listener {
         if (index >= mods.size()) return;
 
         String modId = mods.get(index).id();
-        String newStatus;
+        ModStatus newStatus;
         if (event.isShiftClick()) {
-            newStatus = "UNKNOWN";
+            newStatus = ModStatus.UNKNOWN;
         } else if (event.isRightClick()) {
-            newStatus = "BANNED";
+            newStatus = ModStatus.BANNED;
         } else {
-            newStatus = "ALLOWED";
+            newStatus = ModStatus.ALLOWED;
         }
 
         modChecker.setStatus(modId, newStatus);
 
         NamedTextColor color = switch (newStatus) {
-            case "ALLOWED" -> NamedTextColor.GREEN;
-            case "BANNED" -> NamedTextColor.RED;
+            case ALLOWED -> NamedTextColor.GREEN;
+            case BANNED -> NamedTextColor.RED;
             default -> NamedTextColor.GRAY;
         };
         player.sendMessage(Component.text(modId, NamedTextColor.WHITE)
-                .append(Component.text(" → " + newStatus, color)));
+                .append(Component.text(" → " + newStatus.name(), color)));
 
         reopenPlayerMods(player, holder, holder.page);
     }
 
     private String getModIdFromEntries(int page, int slot) {
         List<String> sorted = new ArrayList<>();
-        for (Map.Entry<String, String> e : modChecker.getModStatus().entrySet()) {
-            if (!"ALLOWED".equals(e.getValue())) sorted.add(e.getKey());
+        for (Map.Entry<String, ModStatus> e : modChecker.getModStatus().entrySet()) {
+            if (e.getValue() != ModStatus.ALLOWED) sorted.add(e.getKey());
         }
         Collections.sort(sorted);
         int index = page * PAGE_SIZE + slot;

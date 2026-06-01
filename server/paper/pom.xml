@@ -4,24 +4,23 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>fr.zeffut</groupId>
-    <artifactId>modchecker</artifactId>
-    <version>1.0.0</version>
+    <parent>
+        <groupId>fr.zeffut</groupId>
+        <artifactId>modchecker-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>modchecker-paper</artifactId>
     <packaging>jar</packaging>
 
-    <properties>
-        <maven.compiler.release>21</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
-    <repositories>
-        <repository>
-            <id>papermc</id>
-            <url>https://repo.papermc.io/repository/maven-public/</url>
-        </repository>
-    </repositories>
-
     <dependencies>
+        <!-- Common module (ModInfo, ModListCodec, ModStatus, BanPolicy) -->
+        <dependency>
+            <groupId>fr.zeffut</groupId>
+            <artifactId>modchecker-common</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
         <!-- Paper API (Purpur ⊃ Paper) : le code n'utilise aucune API spécifique Purpur, et
              purpur-api 1.21.11 n'est plus publié sur le Maven Purpur. Le jar tourne sur Purpur. -->
         <dependency>
@@ -33,13 +32,13 @@
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.11.0</version>
+            <version>${gson.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.10.2</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

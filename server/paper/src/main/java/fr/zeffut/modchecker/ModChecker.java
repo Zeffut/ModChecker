@@ -33,7 +33,7 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final File modsFile;
 
-    private final Map<String, String> modStatus = new ConcurrentHashMap<>();
+    private final Map<String, ModStatus> modStatus = new ConcurrentHashMap<>();
     private final Map<UUID, List<ModInfo>> playerMods = new ConcurrentHashMap<>();
     private final Set<UUID> pendingPlayers = ConcurrentHashMap.newKeySet();
 
@@ -97,19 +97,14 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         boolean newModsFound = false;
         for (ModInfo mod : mods) {
             if (!modStatus.containsKey(mod.id())) {
-                modStatus.put(mod.id(), "UNKNOWN");
+                modStatus.put(mod.id(), ModStatus.UNKNOWN);
                 newModsFound = true;
             }
         }
         // onPluginMessageReceived tourne sur le thread réseau (netty) → écriture disque hors-thread
         if (newModsFound) Bukkit.getScheduler().runTaskAsynchronously(plugin, this::save);
 
-        List<String> bannedMods = new ArrayList<>();
-        for (ModInfo mod : mods) {
-            if ("BANNED".equals(modStatus.get(mod.id()))) {
-                bannedMods.add(mod.name() + " (" + mod.id() + ")");
-            }
-        }
+        List<String> bannedMods = BanPolicy.bannedAmong(mods, modStatus);
 
         if (!bannedMods.isEmpty() && !isExempt(player)) {
             Bukkit.getScheduler().runTask(plugin, () -> player.kick(header()
@@ -155,15 +150,15 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         }, gracePeriodTicks);
     }
 
-    public Map<String, String> getModStatus() { return modStatus; }
+    public Map<String, ModStatus> getModStatus() { return modStatus; }
 
     public List<ModInfo> getPlayerMods(UUID uuid) { return playerMods.get(uuid); }
 
     /** Change le statut d'un mod et kick les joueurs concernés si banni. */
-    public void setStatus(String modId, String status) {
+    public void setStatus(String modId, ModStatus status) {
         modStatus.put(modId, status);
         save();
-        if ("BANNED".equals(status)) {
+        if (status == ModStatus.BANNED) {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 List<ModInfo> mods = playerMods.get(p.getUniqueId());
                 if (mods != null && !isExempt(p) && mods.stream().anyMatch(m -> m.id().equals(modId))) {
@@ -194,9 +189,9 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         return switch (args[0].toLowerCase()) {
             case "list" -> cmdList(sender);
             case "player" -> cmdPlayer(sender, args);
-            case "allow" -> cmdSetStatus(sender, args, "ALLOWED");
-            case "ban" -> cmdSetStatus(sender, args, "BANNED");
-            case "reset" -> cmdSetStatus(sender, args, "UNKNOWN");
+            case "allow" -> cmdSetStatus(sender, args, ModStatus.ALLOWED);
+            case "ban" -> cmdSetStatus(sender, args, ModStatus.BANNED);
+            case "reset" -> cmdSetStatus(sender, args, ModStatus.UNKNOWN);
             default -> { sendUsage(sender); yield true; }
         };
     }
@@ -210,12 +205,12 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         List<String> sorted = new ArrayList<>(modStatus.keySet());
         Collections.sort(sorted);
         for (String modId : sorted) {
-            String status = modStatus.get(modId);
+            ModStatus status = modStatus.get(modId);
             NamedTextColor color = statusColor(status);
-            String icon = switch (status) { case "ALLOWED" -> "✔"; case "BANNED" -> "✘"; default -> "?"; };
+            String icon = switch (status) { case ALLOWED -> "✔"; case BANNED -> "✘"; default -> "?"; };
             sender.sendMessage(Component.text(" " + icon + " ", color)
                     .append(Component.text(modId, NamedTextColor.WHITE))
-                    .append(Component.text(" [" + status + "]", color)));
+                    .append(Component.text(" [" + status.name() + "]", color)));
         }
         return true;
     }
@@ -237,17 +232,17 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         }
         sender.sendMessage(Component.text("=== Mods de " + target.getName() + " (" + mods.size() + ") ===", NamedTextColor.GOLD));
         for (ModInfo mod : mods) {
-            String status = modStatus.getOrDefault(mod.id(), "UNKNOWN");
+            ModStatus status = modStatus.getOrDefault(mod.id(), ModStatus.UNKNOWN);
             NamedTextColor color = statusColor(status);
             sender.sendMessage(Component.text("  ", color)
                     .append(Component.text(mod.name(), NamedTextColor.WHITE))
                     .append(Component.text(" (" + mod.id() + " v" + mod.version() + ")", NamedTextColor.DARK_GRAY))
-                    .append(Component.text(" [" + status + "]", color)));
+                    .append(Component.text(" [" + status.name() + "]", color)));
         }
         return true;
     }
 
-    private boolean cmdSetStatus(CommandSender sender, String[] args, String status) {
+    private boolean cmdSetStatus(CommandSender sender, String[] args, ModStatus status) {
         if (args.length < 2) {
             sender.sendMessage(Component.text("Usage : /mods " + args[0] + " <mod-id>", NamedTextColor.RED));
             return true;
@@ -255,14 +250,14 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         String modId = args[1].toLowerCase();
         setStatus(modId, status);
         sender.sendMessage(Component.text(modId, NamedTextColor.WHITE)
-                .append(Component.text(" → " + status, statusColor(status))));
+                .append(Component.text(" → " + status.name(), statusColor(status))));
         return true;
     }
 
-    private static NamedTextColor statusColor(String status) {
+    private static NamedTextColor statusColor(ModStatus status) {
         return switch (status) {
-            case "ALLOWED" -> NamedTextColor.GREEN;
-            case "BANNED" -> NamedTextColor.RED;
+            case ALLOWED -> NamedTextColor.GREEN;
+            case BANNED -> NamedTextColor.RED;
             default -> NamedTextColor.GRAY;
         };
     }
@@ -297,8 +292,8 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
     private void load() {
         if (!modsFile.exists()) return;
         try (FileReader reader = new FileReader(modsFile)) {
-            Type type = new TypeToken<Map<String, String>>() {}.getType();
-            Map<String, String> loaded = gson.fromJson(reader, type);
+            Type type = new TypeToken<Map<String, ModStatus>>() {}.getType();
+            Map<String, ModStatus> loaded = gson.fromJson(reader, type);
             if (loaded != null) modStatus.putAll(loaded);
         } catch (IOException e) {
             plugin.getLogger().warning("Erreur lecture mods.json : " + e.getMessage());
