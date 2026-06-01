@@ -35,10 +35,21 @@
             <version>${gson.version}</version>
             <scope>compile</scope>
         </dependency>
+        <!-- JUnit 6 pour les tests du module paper (nécessaire pour MockBukkit 4.110.0).
+             Les modules common et velocity restent sur JUnit 5.10.2 via ${junit.version}. -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
+            <version>6.0.3</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- MockBukkit 4.110.0 : cible Paper API 1.21.11 (même version que notre provided).
+             À partir de la version 4.84.0, MockBukkit requiert JUnit 6.
+             L'entrée MANIFEST.MF confirme : Paper-Version: 1.21.11-R0.1-SNAPSHOT. -->
+        <dependency>
+            <groupId>org.mockbukkit.mockbukkit</groupId>
+            <artifactId>mockbukkit-v1.21</artifactId>
+            <version>4.110.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

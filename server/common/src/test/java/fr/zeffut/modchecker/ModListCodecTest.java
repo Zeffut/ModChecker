@@ -58,4 +58,27 @@ class ModListCodecTest {
     void parseReturnsNullOnInvalidJson() {
         assertNull(ModListCodec.parse("pas du json"));
     }
+
+    // ─── Edge cases ────────────────────────────────────────────────────────
+
+    @Test
+    void parseEmptyArrayReturnsEmptyList() {
+        // "[]" est du JSON valide → liste non-nulle et vide.
+        List<ModInfo> mods = ModListCodec.parse("[]");
+        assertNotNull(mods, "parse d'un tableau vide doit retourner une liste non-nulle");
+        assertTrue(mods.isEmpty(), "La liste doit être vide pour \"[]\"");
+    }
+
+    @Test
+    void decodeEmptyByteArrayReturnsNull() {
+        // byte[0] : pas de VarInt lisible → decode doit retourner null sans exception.
+        assertNull(ModListCodec.decode(new byte[0]),
+                "decode d'un tableau d'octets vide doit retourner null");
+    }
+
+    @Test
+    void parseNullReturnsNull() {
+        // null en entrée → null en sortie, sans NullPointerException.
+        assertNull(ModListCodec.parse(null));
+    }
 }
