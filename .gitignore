@@ -11,3 +11,6 @@ build/
 
 # OS
 .DS_Store
+
+# Docs internes de planification (hors périmètre du repo public)
+docs/superpowers/
