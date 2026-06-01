@@ -26,8 +26,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER_DIR="$SCRIPT_DIR/server"
 MOD_DIR="$SCRIPT_DIR/mod"
 
-# JDK 25 pour les nœuds 26.x (Phase 4 wiring des toolchains Gradle)
-JDK25_HOME="/opt/homebrew/Cellar/openjdk/25.0.2/libexec/openjdk.jdk/Contents/Home"
+# JVM de lancement de Gradle, par nœud (Fabric Loom exige que Gradle tourne sur le Java du MC) :
+#   26.x-fabric → JDK 25 ; tout le reste (1.21.11-*, 26.x-neoforge) → JDK 21.
+JDK25_HOME="${JDK25_HOME:-/opt/homebrew/Cellar/openjdk/25.0.2/libexec/openjdk.jdk/Contents/Home}"
+JDK21_HOME="${JDK21_HOME:-/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home}"
+[ -d "$JDK21_HOME" ] || JDK21_HOME="$(/usr/libexec/java_home -v 21 2>/dev/null || echo "$JDK21_HOME")"
 
 # Couleurs (désactivées si pas de terminal interactif)
 if [ -t 1 ]; then
@@ -65,20 +68,21 @@ build_server() {
 # 2. Mod (Gradle — un nœud Stonecutter par appel)
 # -----------------------------------------------------------------------------
 build_mod_node() {
-  local node="$1"   # e.g. "1.21.11-fabric"
-  local mc_ver="${node%%-*}"   # e.g. "1.21.11"  (tout avant le premier -)
-  # Pour les nœuds 26.x on utilise JDK 25
-  local extra_env=()
-  if [[ "$mc_ver" == 26.* ]]; then
-    if [ -d "$JDK25_HOME" ]; then
-      extra_env=(env "JAVA_HOME=$JDK25_HOME")
-    else
-      echo -e "${YELLOW}[WARN]${RESET} JDK 25 introuvable ($JDK25_HOME) — nœud $node peut échouer."
-    fi
+  local node="$1"            # e.g. "1.21.11-fabric"
+  local mc_ver="${node%%-*}" # tout avant le premier -
+  local loader="${node##*-}" # tout après le dernier -
+
+  # Fabric Loom exige que Gradle TOURNE sur le Java du MC : 26.x-fabric → JDK 25, sinon JDK 21.
+  local jdk_home="$JDK21_HOME"
+  if [[ "$mc_ver" == 26.* && "$loader" == "fabric" ]]; then
+    jdk_home="$JDK25_HOME"
+  fi
+  if [ ! -d "$jdk_home" ]; then
+    echo -e "${YELLOW}[WARN]${RESET} JDK introuvable ($jdk_home) — nœud $node peut échouer."
   fi
 
-  echo -e "${CYAN}▶ Mod : :${node}:build${RESET}"
-  if (cd "$MOD_DIR" && "${extra_env[@]}" ./gradlew ":${node}:build" --quiet); then
+  echo -e "${CYAN}▶ Mod : :${node}:build  (JAVA_HOME=$(basename "$(dirname "$(dirname "$jdk_home")")"))${RESET}"
+  if (cd "$MOD_DIR" && JAVA_HOME="$jdk_home" ./gradlew ":${node}:build" --quiet); then
     pass "mod/$node"
   else
     fail "mod/$node"

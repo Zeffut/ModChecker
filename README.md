@@ -54,11 +54,12 @@ mvn -f server/pom.xml clean package
 ### Mod client (toutes versions / loaders)
 ```bash
 cd mod
-./gradlew :1.21.11-fabric:build      # → mod/versions/1.21.11-fabric/build/libs/*.jar
-./gradlew :26.1.2-neoforge:build     # etc. (nœuds : <mc>-<loader>)
+JAVA_HOME=<jdk21> ./gradlew :1.21.11-fabric:build     # → mod/versions/1.21.11-fabric/build/libs/*.jar
+JAVA_HOME=<jdk25> ./gradlew :26.1.2-fabric:build      # nœuds : <mc>-<loader>
 ```
-- 1.21.11 compile sous **JDK 21** ; les versions **26.x sous JDK 25** (sélection automatique par
-  toolchain Gradle).
+- **JVM de lancement de Gradle, par nœud** (Fabric Loom exige que Gradle tourne sur le Java du MC ;
+  NeoForge se contente du toolchain) : `26.x-fabric` → **JDK 25** ; tout le reste (`1.21.11-*`,
+  `26.x-neoforge`) → **JDK 21**. `./build-all.sh` choisit automatiquement le bon JDK par nœud.
 
 ### Tout valider d'un coup
 ```bash
