@@ -36,6 +36,7 @@ public final class ModListCodec {
             byte b;
             do {
                 if (index >= data.length) return null;
+                if (shift >= 35) return null; // un VarInt String fait au plus 5 octets
                 b = data[index++];
                 length |= (b & 0x7F) << shift;
                 shift += 7;

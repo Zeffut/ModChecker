@@ -27,6 +27,22 @@ class ModListCodecTest {
     }
 
     @Test
+    void encodeDecodeRoundTripMultiByteVarInt() {
+        // 128 octets → en-tête VarInt sur 2 octets (0x80 0x01) : exerce la boucle de continuation
+        String s = "x".repeat(128);
+        byte[] encoded = ModListCodec.encode(s);
+        assertEquals(130, encoded.length); // 2 octets de longueur + 128 de contenu
+        assertEquals(s, ModListCodec.decode(encoded));
+    }
+
+    @Test
+    void encodeDecodeRoundTripUtf8() {
+        // caractères multi-octets : la longueur VarInt compte les octets UTF-8, pas les chars
+        String s = "café—中文😀";
+        assertEquals(s, ModListCodec.decode(ModListCodec.encode(s)));
+    }
+
+    @Test
     void parsesModListWithAndWithoutVersion() {
         List<ModInfo> mods = ModListCodec.parse(
                 "[{\"id\":\"a\",\"name\":\"Alpha\",\"version\":\"1.0\"},{\"id\":\"b\",\"name\":\"Beta\"}]");
