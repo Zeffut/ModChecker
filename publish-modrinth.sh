@@ -43,7 +43,9 @@ who="$(curl -fsS -H "Authorization: $MODRINTH_TOKEN" -H "User-Agent: $UA" "$API/
 echo "  ✔ authentifié : $who"
 
 # --- Récupère les jars du mod (hors -sources) ---
-mapfile -t MOD_JARS < <(find mod/versions -path '*/build/libs/*.jar' ! -name '*-sources.jar' | sort)
+MOD_JARS=()
+while IFS= read -r _jar; do MOD_JARS+=("$_jar"); done \
+  < <(find mod/versions -path '*/build/libs/*.jar' ! -name '*-sources.jar' | sort)
 PLUGIN_JAR="server/paper/target/ModChecker-${PLUGIN_VERSION}.jar"
 VELOCITY_JAR="server/velocity/target/ModChecker-velocity-${PLUGIN_VERSION}.jar"
 
