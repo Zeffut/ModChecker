@@ -12,8 +12,13 @@ import net.fabricmc.loader.api.ModContainer;
 public class ModCheckerFabric implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        PayloadTypeRegistry.playS2C().register(HelloPayload.ID, HelloPayload.CODEC);
+        //? if >=26.1 {
+        PayloadTypeRegistry.clientboundPlay().register(HelloPayload.ID, HelloPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(ModListPayload.ID, ModListPayload.CODEC);
+        //?} else {
+        /*PayloadTypeRegistry.playS2C().register(HelloPayload.ID, HelloPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ModListPayload.ID, ModListPayload.CODEC);
+        *///?}
         ClientPlayNetworking.registerGlobalReceiver(HelloPayload.ID, (payload, context) -> {
             JsonArray mods = new JsonArray();
             for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {

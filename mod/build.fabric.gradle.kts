@@ -26,13 +26,22 @@ dependencies {
     // which Gradle does not generate for Stonecutter's non-`build.gradle.kts` buildscripts.
     add("minecraft", "com.mojang:minecraft:$mcVersion")
 
-    // MC 26.x has no Yarn mappings published -> fall back to Mojang mappings.
+    // MC 26.x ships UN-obfuscated: the Mojang `client.jar` already contains readable names
+    // (net.minecraft.network.RegistryFriendlyByteBuf, net.minecraft.resources.Identifier, ...),
+    // and Mojang no longer publishes a `client_mappings` proguard file for 26.x. Therefore:
+    //  - loom.officialMojangMappings() fails ("Failed to find official mojang mappings").
+    //  - intermediary 0.0.0 for 26.x is empty (official == intermediary, identity).
+    // We feed Loom a prebuilt identity intermediary->named mapping jar (mappings/mappings.tiny
+    // with only the `tiny 2 0 intermediary named` header => identity), so the mod compiles
+    // directly against the Mojang names already present in the jar. It must be a real file that
+    // exists at configuration time (Loom reads it during afterEvaluate), hence a committed jar
+    // rather than a Gradle task output. For 1.21.11 the published Yarn mappings are used as-is.
     val yarn = (findProperty("deps.yarn") as String?)?.takeIf { it.isNotBlank() }
-    add(
-        "mappings",
-        if (yarn != null) "net.fabricmc:yarn:$yarn:v2"
-        else loom.officialMojangMappings()
-    )
+    if (yarn != null) {
+        add("mappings", "net.fabricmc:yarn:$yarn:v2")
+    } else {
+        add("mappings", files(rootProject.file("mappings/mojang-26x-identity.jar")))
+    }
 
     add("modImplementation", "net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
     add("modImplementation", "net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
@@ -57,10 +66,14 @@ listOf("processResources", "compileJava", "sourcesJar").forEach { name ->
     tasks.matching { it.name == name }.configureEach { dependsOn("stonecutterGenerate") }
 }
 
+// 26.x requires JDK 25, 1.21.11 requires JDK 21. A Java toolchain resolves the correct
+// compile JDK from org.gradle.java.installations.paths regardless of the launching JVM.
+val javaTarget = if (stonecutter.eval(mcVersion, ">=26.1")) 25 else 21
+
 java {
-    val javaVersion = if (stonecutter.eval(mcVersion, ">=26.1")) JavaVersion.VERSION_25 else JavaVersion.VERSION_21
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(javaTarget))
+    }
     withSourcesJar()
 }
 
@@ -73,5 +86,5 @@ sourceSets.named("main") {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.release.set(if (stonecutter.eval(mcVersion, ">=26.1")) 25 else 21)
+    options.release.set(javaTarget)
 }

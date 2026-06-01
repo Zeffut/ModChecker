@@ -62,13 +62,17 @@ tasks.matching { it.name == "createMinecraftArtifacts" }.configureEach {
     dependsOn("stonecutterGenerate")
 }
 
+// 26.x requires JDK 25, 1.21.11 requires JDK 21. A Java toolchain resolves the correct
+// compile JDK from org.gradle.java.installations.paths regardless of the launching JVM.
+val javaTarget = if (stonecutter.eval(mcVersion, ">=26.1")) 25 else 21
+
 java {
-    val javaVersion = if (stonecutter.eval(mcVersion, ">=26.1")) JavaVersion.VERSION_25 else JavaVersion.VERSION_21
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(javaTarget))
+    }
     withSourcesJar()
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.release.set(if (stonecutter.eval(mcVersion, ">=26.1")) 25 else 21)
+    options.release.set(javaTarget)
 }
