@@ -31,14 +31,15 @@ API="https://api.modrinth.com/v2"
 
 # --- Projets Modrinth ---
 MOD_PROJECT_ID="${MOD_PROJECT_ID:-pZZSQM2X}"     # zeffut-mod-checker (mod)
-PLUGIN_PROJECT_ID="${PLUGIN_PROJECT_ID:-oIAAfSll}"  # zeffut-mod-checker-plugin (plugin)
+# `-` (et non `:-`) : PLUGIN_PROJECT_ID="" (vide) → on saute les plugins ; absent → défaut.
+PLUGIN_PROJECT_ID="${PLUGIN_PROJECT_ID-oIAAfSll}"  # zeffut-mod-checker-plugin (plugin)
 
-MOD_VERSION="2.0.0"
+MOD_VERSION="2.0.1"
 PLUGIN_VERSION="1.0.0"
 PLUGIN_GAME_VERSIONS='["1.21.11","26.1","26.1.1","26.1.2"]'
 
 # Changelog (EN — toute la vitrine Modrinth est en anglais)
-CHANGELOG="Reports the client mod list to the server; the server/proxy can allow or ban mods and kicks players carrying a banned one. Server-side hello handshake: the client only sends its mod list to a server running ModChecker. Supports Fabric and NeoForge on Minecraft 1.21.11, 26.1, 26.1.1 and 26.1.2."
+CHANGELOG="2.0.1 - Fixes the handshake on Paper/Bukkit servers: the client now reliably reports its mod list (detected via native channel registration instead of a server-to-client packet, which Bukkit does not deliver reliably). The client still only talks to servers running ModChecker. Validated end-to-end on Fabric and NeoForge."
 
 # --- Validation token ---
 echo "▶ Validation du token Modrinth…"
@@ -46,10 +47,20 @@ who="$(curl -fsS -H "Authorization: $MODRINTH_TOKEN" -H "User-Agent: $UA" "$API/
 [ -n "$who" ] || { echo "Token invalide." >&2; exit 1; }
 echo "  ✔ authentifié : $who"
 
+# Vrai si le numéro de version existe déjà sur le projet (idempotence : évite les doublons).
+version_exists() {
+  local project="$1" vnum="$2"
+  curl -fsS -H "Authorization: $MODRINTH_TOKEN" -H "User-Agent: $UA" "$API/project/$project/version" 2>/dev/null \
+    | python3 -c "import sys,json; sys.exit(0 if any(v['version_number']==sys.argv[1] for v in json.load(sys.stdin)) else 1)" "$vnum"
+}
+
 # upload_version <project_id> <version_number> <name> <loaders_json> <game_versions_json> <file>
 upload_version() {
   local project="$1" vnum="$2" name="$3" loaders="$4" gvs="$5" file="$6"
   [ -f "$file" ] || { echo "  ⚠ jar absent, ignoré : $file"; return 0; }
+  if $PUBLISH && version_exists "$project" "$vnum"; then
+    echo "  = déjà publié, ignoré : $name ($vnum)"; return 0
+  fi
   local data
   data=$(cat <<JSON
 {"project_id":"$project","name":"$name","version_number":"$vnum","version_type":"release",
@@ -73,7 +84,8 @@ JSON
 
 echo
 echo "▶ MOD → projet $MOD_PROJECT_ID (une version par loader × version MC)"
-for jar in $(find mod/versions -path '*/build/libs/*.jar' ! -name '*-sources.jar' | sort); do
+# Filtre par MOD_VERSION : sinon d'anciens jars laissés dans build/libs seraient republiés.
+for jar in $(find mod/versions -path "*/build/libs/*-${MOD_VERSION}+*.jar" ! -name '*-sources.jar' | sort); do
   node="$(echo "$jar" | sed -E 's#mod/versions/([^/]+)/.*#\1#')"   # ex. 26.1.2-fabric
   mc="${node%-*}"; loader="${node##*-}"
   upload_version "$MOD_PROJECT_ID" "${MOD_VERSION}+${node}" \
