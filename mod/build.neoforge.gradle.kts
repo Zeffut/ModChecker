@@ -22,7 +22,14 @@ neoForge.apply {
     version = property("deps.neoforge") as String
 
     runs {
-        register("client") { client() }
+        register("client") {
+            client()
+            // Harness e2e : `-PtestServer=host:port` → auto-rejoint ce serveur (quick-play).
+            (findProperty("testServer") as String?)?.takeIf { it.isNotBlank() }?.let { server ->
+                programArguments.addAll("--quickPlayMultiplayer", server)
+                jvmArguments.add("-Dmodchecker.e2e.client=1")  // marqueur pour le teardown du harness
+            }
+        }
     }
 
     mods {

@@ -47,7 +47,14 @@ dependencies {
     add("modImplementation", "net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
 }
 
-loom.runs.named("client") { client() }
+loom.runs.named("client") {
+    client()
+    // Harness e2e : `-PtestServer=host:port` fait auto-rejoindre ce serveur (quick-play) au lancement.
+    (findProperty("testServer") as String?)?.takeIf { it.isNotBlank() }?.let { server ->
+        programArgs("--quickPlayMultiplayer", server)
+        vmArgs("-Dmodchecker.e2e.client=1")  // marqueur pour que le harness puisse tuer ce client
+    }
+}
 
 val expandProps = mapOf(
     "version" to "${property("mod.version")}+$mcVersion",
