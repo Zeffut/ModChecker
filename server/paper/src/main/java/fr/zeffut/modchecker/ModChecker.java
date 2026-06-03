@@ -98,10 +98,12 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         playerMods.put(player.getUniqueId(), mods);
 
         boolean newModsFound = false;
+        int newModsCount = 0;
         for (ModInfo mod : mods) {
             if (!modStatus.containsKey(mod.id())) {
                 modStatus.put(mod.id(), ModStatus.UNKNOWN);
                 newModsFound = true;
+                newModsCount++;
                 tel(t -> t.modDiscovered(mod.id(), mod.name(), mod.version()));
             }
         }
@@ -110,9 +112,9 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
 
         List<String> bannedMods = BanPolicy.bannedAmong(mods, modStatus);
 
-        int newModsCount = (int) mods.stream().filter(m -> modStatus.get(m.id()) == ModStatus.UNKNOWN).count();
         final boolean hasBanned = !bannedMods.isEmpty();
-        tel(t -> t.modlistReceived(player, mods.size(), json.length(), newModsCount, hasBanned));
+        final int discoveredCount = newModsCount;
+        tel(t -> t.modlistReceived(player, mods.size(), json.length(), discoveredCount, hasBanned));
 
         if (!bannedMods.isEmpty() && !isExempt(player)) {
             Bukkit.getScheduler().runTask(plugin, () -> {
