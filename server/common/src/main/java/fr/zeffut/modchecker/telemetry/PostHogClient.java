@@ -78,14 +78,11 @@ public final class PostHogClient {
         for (Map.Entry<String, Object> e : root.entrySet()) {
             if (!first) sb.append(',');
             first = false;
-            sb.append('"').append(e.getKey()).append("\":");
+            sb.append(JsonWriter.value(e.getKey())).append(':');
             if ("properties".equals(e.getKey())) {
                 sb.append(JsonWriter.write(props));
             } else {
-                Map<String, Object> single = new LinkedHashMap<>();
-                single.put("v", e.getValue());
-                String w = JsonWriter.write(single);          // {"v":...}
-                sb.append(w, 5, w.length() - 1);              // garde juste la valeur encodée
+                sb.append(JsonWriter.value(e.getValue()));
             }
         }
         return sb.append('}').toString();

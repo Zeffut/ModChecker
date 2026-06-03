@@ -19,6 +19,13 @@ final class JsonWriter {
         return sb.append('}').toString();
     }
 
+    /** Encode une valeur unique (String/Number/Boolean/Collection/null) en JSON. */
+    static String value(Object v) {
+        StringBuilder sb = new StringBuilder();
+        value(sb, v);
+        return sb.toString();
+    }
+
     private static void value(StringBuilder sb, Object v) {
         if (v == null) {
             sb.append("null");
