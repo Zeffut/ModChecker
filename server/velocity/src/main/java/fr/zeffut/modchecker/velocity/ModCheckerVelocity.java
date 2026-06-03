@@ -129,7 +129,10 @@ public final class ModCheckerVelocity {
         int graceSeconds = config.getGraceSeconds();
         proxy.getScheduler()
                 .buildTask(this, () -> {
-                    pendingPlayers.remove(playerId);
+                    boolean wasPending = pendingPlayers.remove(playerId);
+                    if (!wasPending) {
+                        return;  // le joueur a déjà envoyé sa modlist → rien à faire
+                    }
                     if (!config.isKickWithoutMod()) {
                         proxy.getPlayer(playerId).ifPresent(p -> telemetry.playerNoMod(p.getUniqueId().toString(), p.getUsername()));
                         return;
