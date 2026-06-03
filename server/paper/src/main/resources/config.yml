@@ -9,3 +9,6 @@ bypass-permission: "modchecker.bypass"
 messages:
   banned-mod: "Mod(s) interdit(s) détecté(s) :"
   missing-mod: "Le mod ModChecker est requis. Installe-le et reconnecte-toi."
+# Télémétrie anonyme (PostHog) — désactivable
+telemetry: true
+telemetry-host: "https://eu.i.posthog.com"

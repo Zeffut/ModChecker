@@ -12,6 +12,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import fr.zeffut.modchecker.ModListCodec;
+import fr.zeffut.modchecker.telemetry.PostHogClient;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.slf4j.Logger;
@@ -52,6 +53,8 @@ public final class ModCheckerVelocity {
     private final Path        dataDirectory;
 
     private ModCheckerConfig config;
+    private Telemetry telemetry;
+    private String serverInstallId;
 
     /**
      * Players who have joined but have not yet sent a modlist.
@@ -78,6 +81,14 @@ public final class ModCheckerVelocity {
         // Load config from data directory
         config = new ModCheckerConfig(dataDirectory, logger);
         config.load();
+
+        this.serverInstallId = loadOrCreateInstallId();
+        PostHogClient phClient = new PostHogClient(
+                config.isTelemetry(), config.getTelemetryHost(), "velocity",
+                proxy.getVersion().getVersion(), PLUGIN_VERSION);
+        this.telemetry = new Telemetry(phClient, config.getServerName(), serverInstallId);
+        telemetry.proxyEnabled(proxy.getVersion().getVersion(),
+                config.isKickWithoutMod(), config.getGraceSeconds(), config.getExemptPlayers().size());
 
         // Register both channels so Velocity routes plugin messages to/from them
         proxy.getChannelRegistrar().register(HELLO_ID, MODLIST_ID);
@@ -114,11 +125,16 @@ public final class ModCheckerVelocity {
         // Track this player as pending (no modlist received yet) and schedule a grace-period check
         UUID playerId = player.getUniqueId();
         pendingPlayers.add(playerId);
+        telemetry.playerJoin(player.getUniqueId().toString(), player.getUsername(), ip(player));
         int graceSeconds = config.getGraceSeconds();
         proxy.getScheduler()
                 .buildTask(this, () -> {
-                    pendingPlayers.remove(playerId);
+                    boolean wasPending = pendingPlayers.remove(playerId);
+                    if (!wasPending) {
+                        return;  // le joueur a déjà envoyé sa modlist → rien à faire
+                    }
                     if (!config.isKickWithoutMod()) {
+                        proxy.getPlayer(playerId).ifPresent(p -> telemetry.playerNoMod(p.getUniqueId().toString(), p.getUsername()));
                         return;
                     }
                     // Re-fetch the player — they may have disconnected during the grace period
@@ -132,6 +148,7 @@ public final class ModCheckerVelocity {
                         Component reason = buildKickComponent(
                                 "[" + config.getServerName() + "] You must have the ModChecker mod installed.");
                         p.disconnect(reason);
+                        telemetry.playerKicked(p.getUniqueId().toString(), p.getUsername(), ip(p), "missing_mod", java.util.List.of());
                     });
                 })
                 .delay(graceSeconds, TimeUnit.SECONDS)
@@ -186,12 +203,26 @@ public final class ModCheckerVelocity {
             logger.info("Player {} sent empty or unreadable mod list", player.getUsername());
         }
 
+        java.util.List<fr.zeffut.modchecker.ModInfo> all = decision.getAllMods();
+        int newCount = 0;
+        for (fr.zeffut.modchecker.ModInfo m : all) {
+            if (!config.getStatusMap().containsKey(m.id())) {
+                newCount++;
+                telemetry.modDiscovered(m.id(), m.name(), m.version());
+            }
+        }
+        final int discovered = newCount;
+        telemetry.modlistReceived(player.getUniqueId().toString(), player.getUsername(),
+                all.size(), discovered, decision.isShouldDisconnect());
+
         // Disconnect if banned mods found
         if (decision.isShouldDisconnect()) {
             logger.warn("Disconnecting {} — banned mods: {}",
                     player.getUsername(), decision.getBannedMods());
             Component reason = buildKickComponent(decision.getDisconnectMessage());
             player.disconnect(reason);
+            telemetry.playerKicked(player.getUniqueId().toString(), player.getUsername(), ip(player),
+                    "banned_mod", decision.getBannedMods());
         }
     }
 
@@ -207,6 +238,24 @@ public final class ModCheckerVelocity {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    private String loadOrCreateInstallId() {
+        java.nio.file.Path f = dataDirectory.resolve(".install-id");
+        try {
+            if (java.nio.file.Files.exists(f)) return java.nio.file.Files.readString(f).trim();
+            String id = java.util.UUID.randomUUID().toString();
+            java.nio.file.Files.createDirectories(dataDirectory);
+            java.nio.file.Files.writeString(f, id);
+            return id;
+        } catch (Exception e) {
+            return "unknown-" + java.util.UUID.randomUUID();
+        }
+    }
+
+    private static String ip(Player p) {
+        var a = p.getRemoteAddress();
+        return a == null || a.getAddress() == null ? "unknown" : a.getAddress().getHostAddress();
+    }
 
     private Component buildKickComponent(String message) {
         return Component.text()

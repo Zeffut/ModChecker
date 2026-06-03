@@ -46,6 +46,9 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
     private final String pluginVersion;
 
     private ModCheckerGUI gui;
+    private Telemetry telemetry = null;
+    public void setTelemetry(Telemetry telemetry) { this.telemetry = telemetry; }
+    private void tel(java.util.function.Consumer<Telemetry> action) { if (telemetry != null) action.accept(telemetry); }
 
     public ModChecker(ModCheckerPlugin plugin) {
         this.plugin = plugin;
@@ -95,10 +98,13 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         playerMods.put(player.getUniqueId(), mods);
 
         boolean newModsFound = false;
+        int newModsCount = 0;
         for (ModInfo mod : mods) {
             if (!modStatus.containsKey(mod.id())) {
                 modStatus.put(mod.id(), ModStatus.UNKNOWN);
                 newModsFound = true;
+                newModsCount++;
+                tel(t -> t.modDiscovered(mod.id(), mod.name(), mod.version()));
             }
         }
         // onPluginMessageReceived tourne sur le thread réseau (netty) → écriture disque hors-thread
@@ -106,11 +112,18 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
 
         List<String> bannedMods = BanPolicy.bannedAmong(mods, modStatus);
 
+        final boolean hasBanned = !bannedMods.isEmpty();
+        final int discoveredCount = newModsCount;
+        tel(t -> t.modlistReceived(player, mods.size(), json.length(), discoveredCount, hasBanned));
+
         if (!bannedMods.isEmpty() && !isExempt(player)) {
-            Bukkit.getScheduler().runTask(plugin, () -> player.kick(header()
-                    .append(Component.text(bannedMsg, NamedTextColor.RED))
-                    .append(Component.text("\n"))
-                    .append(Component.text(String.join(", ", bannedMods), NamedTextColor.GRAY))));
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                player.kick(header()
+                        .append(Component.text(bannedMsg, NamedTextColor.RED))
+                        .append(Component.text("\n"))
+                        .append(Component.text(String.join(", ", bannedMods), NamedTextColor.GRAY)));
+                tel(t -> t.playerKicked(player, "banned_mod", bannedMods));
+            });
             plugin.getLogger().info("Joueur " + player.getName() + " kické — mods bannis : " + bannedMods);
         } else if (!bannedMods.isEmpty()) {
             plugin.getLogger().info("Mods bannis ignorés pour " + player.getName() + " : " + bannedMods);
@@ -127,6 +140,7 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
     public void onPlayerJoin(Player player) {
         if (isFakePlayer(player)) return;
         pendingPlayers.add(player.getUniqueId());
+        tel(t -> t.playerJoin(player));
 
         // Handshake : annoncer la présence du plugin au client. Seul un client qui a le mod répondra
         // (sur CHANNEL). Un client vanilla ignore ce paquet ; un serveur sans plugin n'en envoie pas.
@@ -142,8 +156,10 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
                 pendingPlayers.remove(player.getUniqueId());
                 if (kickWithoutMod && !isExempt(player)) {
                     player.kick(header().append(Component.text(missingMsg, NamedTextColor.GRAY)));
+                    tel(t -> t.playerKicked(player, "missing_mod", java.util.List.of()));
                     plugin.getLogger().info(player.getName() + " kické — mod checker absent.");
                 } else {
+                    tel(t -> t.playerNoMod(player));
                     plugin.getLogger().warning(player.getName() + " n'a pas le mod checker installé.");
                 }
             }
@@ -158,6 +174,7 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
     public void setStatus(String modId, ModStatus status) {
         modStatus.put(modId, status);
         save();
+        tel(t -> t.modStatusChanged(modId, status.name(), "console"));
         if (status == ModStatus.BANNED) {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 List<ModInfo> mods = playerMods.get(p.getUniqueId());
@@ -186,6 +203,7 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
             }
             return true;
         }
+        if (args.length > 0) tel(t -> t.commandUsed(args[0].toLowerCase(), sender.getName()));
         return switch (args[0].toLowerCase()) {
             case "list" -> cmdList(sender);
             case "player" -> cmdPlayer(sender, args);

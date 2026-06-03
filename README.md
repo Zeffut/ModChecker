@@ -86,6 +86,23 @@ Permission admin : `modchecker.admin`. Exemption : `modchecker.bypass` ou OP.
 Config propre au proxy (statuts de mods, `kick-without-mod`, `server-name`, messages). L'enforcement
 (handshake + kick des mods bannis) se fait **au niveau du proxy**, avant d'atteindre un backend.
 
+## Télémétrie (PostHog)
+
+ModChecker envoie une télémétrie d'usage (PostHog) pour suivre le parc d'installation, les versions
+MC/loader, l'adoption, les kicks et les mods détectés. Envoi **asynchrone, fire-and-forget**, sans
+impact sur le jeu ni le serveur. Le mod client émet `client_started`, `server_joined`, `modlist_sent`,
+`modlist_send_failed` ;
+les plugins Paper/Velocity émettent `plugin_enabled`/`proxy_enabled`, `player_join`, `modlist_received`,
+`mod_discovered`, `player_kicked`, `player_no_mod`, `mod_status_changed`, `command_used`.
+
+**Désactiver :**
+- Plugins (Paper / Velocity) : `telemetry: false` dans `config.yml` (Paper) / `config.json` (Velocity).
+- Mod client : `-Dmodchecker.telemetry=false` au lancement, ou `"telemetry": false` dans
+  `config/modchecker.json`.
+
+Host d'ingestion configurable via `telemetry-host` (plugins) / `-Dmodchecker.telemetry.host=` (mod).
+Région par défaut : EU (`https://eu.i.posthog.com`).
+
 ## Tests
 
 - `mvn -f server/pom.xml verify` — 44 tests : protocole (`ModListCodec`/`BanPolicy`/`ModStatus`),

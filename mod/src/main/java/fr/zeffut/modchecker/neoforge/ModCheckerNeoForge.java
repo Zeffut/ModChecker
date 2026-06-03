@@ -16,6 +16,9 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 //?}
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforgespi.language.IModInfo;
+import fr.zeffut.modchecker.telemetry.PostHog;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +29,29 @@ public class ModCheckerNeoForge {
     public ModCheckerNeoForge(IEventBus modBus) {
         modBus.addListener(this::registerPayloads);
         NeoForge.EVENT_BUS.addListener(this::onLoggingIn);
+
+        Map<String, Object> started = new LinkedHashMap<>();
+        started.put("loader", "neoforge");
+        started.put("installed_mods_count", ModList.get().size());
+        started.put("os_name", System.getProperty("os.name"));
+        started.put("os_arch", System.getProperty("os.arch"));
+        started.put("java_version", System.getProperty("java.version"));
+        PostHog.capture("client_started", "mod-neoforge", mcVersion(), modVersion(), started);
+    }
+
+    private static String mcVersion() {
+        return versionOf("minecraft");
+    }
+
+    private static String modVersion() {
+        return versionOf("modchecker");
+    }
+
+    private static String versionOf(String modId) {
+        for (IModInfo mod : ModList.get().getMods()) {
+            if (modId.equals(mod.getModId())) return mod.getVersion().toString();
+        }
+        return "unknown";
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
@@ -47,8 +73,14 @@ public class ModCheckerNeoForge {
             ClientPacketDistributor.sendToServer(payload);
             //?}
             LOG.info("[ModChecker] mod list SENT on login");
+            Map<String, Object> sent = new LinkedHashMap<>();
+            sent.put("mod_count", ModList.get().size());
+            PostHog.capture("modlist_sent", "mod-neoforge", mcVersion(), modVersion(), sent);
         } catch (Throwable t) {
             LOG.info("[ModChecker] not sent (server without ModChecker?): {}", t.toString());
+            Map<String, Object> failed = new LinkedHashMap<>();
+            failed.put("error", t.toString());
+            PostHog.capture("modlist_send_failed", "mod-neoforge", mcVersion(), modVersion(), failed);
         }
     }
 

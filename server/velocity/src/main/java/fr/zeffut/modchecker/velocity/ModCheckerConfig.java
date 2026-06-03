@@ -35,6 +35,8 @@ public final class ModCheckerConfig {
     public static final String DEFAULT_KICK_MESSAGE  = "You are using a banned mod: {mods}";
     public static final int    DEFAULT_GRACE_SECONDS = 10;
     public static final boolean DEFAULT_KICK_WITHOUT_MOD = false;
+    public static final boolean DEFAULT_TELEMETRY = true;
+    public static final String  DEFAULT_TELEMETRY_HOST = "https://eu.i.posthog.com";
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -45,6 +47,8 @@ public final class ModCheckerConfig {
     private String  kickMessage     = DEFAULT_KICK_MESSAGE;
     private int     graceSeconds    = DEFAULT_GRACE_SECONDS;
     private boolean kickWithoutMod  = DEFAULT_KICK_WITHOUT_MOD;
+    private boolean telemetry     = DEFAULT_TELEMETRY;
+    private String  telemetryHost = DEFAULT_TELEMETRY_HOST;
 
     private final Path dataDirectory;
     private final org.slf4j.Logger logger;
@@ -115,6 +119,8 @@ public final class ModCheckerConfig {
             if (obj.has("kick-message"))     kickMessage    = obj.get("kick-message").getAsString();
             if (obj.has("grace-period-seconds")) graceSeconds = obj.get("grace-period-seconds").getAsInt();
             if (obj.has("kick-without-mod")) kickWithoutMod = obj.get("kick-without-mod").getAsBoolean();
+            if (obj.has("telemetry"))      telemetry     = obj.get("telemetry").getAsBoolean();
+            if (obj.has("telemetry-host")) telemetryHost = obj.get("telemetry-host").getAsString();
             if (obj.has("exempt-players")) {
                 Set<String> loaded = new HashSet<>();
                 JsonArray arr = obj.getAsJsonArray("exempt-players");
@@ -142,6 +148,8 @@ public final class ModCheckerConfig {
             obj.addProperty("kick-message",         DEFAULT_KICK_MESSAGE);
             obj.addProperty("grace-period-seconds", DEFAULT_GRACE_SECONDS);
             obj.addProperty("kick-without-mod",     DEFAULT_KICK_WITHOUT_MOD);
+            obj.addProperty("telemetry",      DEFAULT_TELEMETRY);
+            obj.addProperty("telemetry-host", DEFAULT_TELEMETRY_HOST);
             obj.add("exempt-players", new JsonArray());
             GSON.toJson(obj, w);
             logger.info("Created default config.json");
@@ -158,5 +166,7 @@ public final class ModCheckerConfig {
     public String  getKickMessage()    { return kickMessage; }
     public int     getGraceSeconds()   { return graceSeconds; }
     public boolean isKickWithoutMod()  { return kickWithoutMod; }
+    public boolean isTelemetry()      { return telemetry; }
+    public String  getTelemetryHost() { return telemetryHost; }
 
 }
