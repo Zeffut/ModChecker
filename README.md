@@ -90,7 +90,8 @@ Config propre au proxy (statuts de mods, `kick-without-mod`, `server-name`, mess
 
 ModChecker envoie une télémétrie d'usage (PostHog) pour suivre le parc d'installation, les versions
 MC/loader, l'adoption, les kicks et les mods détectés. Envoi **asynchrone, fire-and-forget**, sans
-impact sur le jeu ni le serveur. Le mod client émet `client_started`, `server_joined`, `modlist_sent` ;
+impact sur le jeu ni le serveur. Le mod client émet `client_started`, `server_joined`, `modlist_sent`,
+`modlist_send_failed` ;
 les plugins Paper/Velocity émettent `plugin_enabled`/`proxy_enabled`, `player_join`, `modlist_received`,
 `mod_discovered`, `player_kicked`, `player_no_mod`, `mod_status_changed`, `command_used`.
 
