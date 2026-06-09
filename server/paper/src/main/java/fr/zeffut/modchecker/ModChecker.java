@@ -41,6 +41,8 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
     private final boolean kickWithoutMod;
     private final long gracePeriodTicks;
     private final String bypassPermission;
+    /** Pseudos exemptés du mod-checker (minuscule) — utile pour les faux joueurs / bots de test. */
+    private final java.util.Set<String> bypassNames;
     private final String bannedMsg;
     private final String missingMsg;
     private final String pluginVersion;
@@ -59,6 +61,10 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
         this.kickWithoutMod = cfg.getBoolean("kick-without-mod", false);
         this.gracePeriodTicks = Math.max(1, cfg.getLong("grace-period-seconds", 5)) * 20L;
         this.bypassPermission = cfg.getString("bypass-permission", "modchecker.bypass");
+        this.bypassNames = new java.util.HashSet<>();
+        for (String n : cfg.getStringList("bypass-names")) {
+            if (n != null && !n.isBlank()) bypassNames.add(n.trim().toLowerCase(java.util.Locale.ROOT));
+        }
         this.bannedMsg = cfg.getString("messages.banned-mod", "Mod(s) interdit(s) détecté(s) :");
         this.missingMsg = cfg.getString("messages.missing-mod",
                 "Le mod ModChecker est requis. Installe-le et reconnecte-toi.");
@@ -68,7 +74,9 @@ public class ModChecker implements PluginMessageListener, CommandExecutor, TabCo
     public void setGui(ModCheckerGUI gui) { this.gui = gui; }
 
     private boolean isExempt(Player player) {
-        return player.isOp() || player.hasPermission(bypassPermission);
+        return player.isOp()
+                || player.hasPermission(bypassPermission)
+                || bypassNames.contains(player.getName().toLowerCase(java.util.Locale.ROOT));
     }
 
     private Component header() {

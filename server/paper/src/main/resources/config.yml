@@ -6,6 +6,9 @@ kick-without-mod: false
 grace-period-seconds: 5
 # Permission qui exempte du mod-checker (les OP sont toujours exemptés)
 bypass-permission: "modchecker.bypass"
+# Pseudos exemptes du mod-checker (insensible a la casse) — pratique pour les faux
+# joueurs / bots de test (FPP) qui ne peuvent pas envoyer leur liste de mods.
+bypass-names: []
 messages:
   banned-mod: "Mod(s) interdit(s) détecté(s) :"
   missing-mod: "Le mod ModChecker est requis. Installe-le et reconnecte-toi."
