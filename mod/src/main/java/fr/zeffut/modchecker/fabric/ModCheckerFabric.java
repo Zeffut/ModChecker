@@ -37,6 +37,12 @@ public class ModCheckerFabric implements ClientModInitializer {
         started.put("os_arch", System.getProperty("os.arch"));
         started.put("java_version", System.getProperty("java.version"));
         PostHog.capture("client_started", "mod-fabric", mc, modVer, started);
+        try {
+            PostHog.startHeartbeat("mod-fabric", mc, modVer);
+            fr.zeffut.modchecker.update.UpdateService.start();
+        } catch (Throwable t) {
+            LOG.warn("[ModChecker] auto-update init skipped: {}", t.toString());
+        }
 
         // Handshake natif (minecraft:register) : à la connexion, si le serveur déclare accepter
         // modchecker:modlist (= il fait tourner le plugin ModChecker), on lui envoie la liste des

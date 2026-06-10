@@ -54,6 +54,10 @@ loom.runs.named("client") {
         programArgs("--quickPlayMultiplayer", server)
         vmArgs("-Dmodchecker.e2e.client=1")  // marqueur pour que le harness puisse tuer ce client
     }
+    // Forward `-Pautoupdate.*` Gradle props to the dev client as system properties.
+    project.properties.keys.filter { it.startsWith("autoupdate.") }.forEach { key ->
+        vmArg("-D$key=${project.property(key)}")
+    }
 }
 
 val expandProps = mapOf(

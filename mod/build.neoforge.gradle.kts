@@ -29,6 +29,10 @@ neoForge.apply {
                 programArguments.addAll("--quickPlayMultiplayer", server)
                 jvmArguments.add("-Dmodchecker.e2e.client=1")  // marqueur pour le teardown du harness
             }
+            // Forward `-Pautoupdate.*` Gradle props to the dev client as system properties.
+            project.properties.keys.filter { it.startsWith("autoupdate.") }.forEach { key ->
+                jvmArguments.add("-D$key=${project.property(key)}")
+            }
         }
     }
 
