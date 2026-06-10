@@ -37,6 +37,12 @@ public class ModCheckerNeoForge {
         started.put("os_arch", System.getProperty("os.arch"));
         started.put("java_version", System.getProperty("java.version"));
         PostHog.capture("client_started", "mod-neoforge", mcVersion(), modVersion(), started);
+        try {
+            PostHog.startHeartbeat("mod-neoforge", mcVersion(), modVersion());
+            fr.zeffut.modchecker.update.UpdateService.start();
+        } catch (Throwable t) {
+            LOG.warn("[ModChecker] auto-update init skipped: {}", t.toString());
+        }
     }
 
     private static String mcVersion() {

@@ -103,6 +103,27 @@ les plugins Paper/Velocity émettent `plugin_enabled`/`proxy_enabled`, `player_j
 Host d'ingestion configurable via `telemetry-host` (plugins) / `-Dmodchecker.telemetry.host=` (mod).
 Région par défaut : EU (`https://eu.i.posthog.com`).
 
+## Mise à jour automatique (mod client)
+
+Le mod client embarque le module d'auto-update de Zeffut : au démarrage du jeu, en arrière-plan
+(thread daemon, fire-and-forget), il met à jour **silencieusement** les mods Modrinth du compte
+**Zeffut** présents dans `mods/` (ce mod inclus). Lookup par hash SHA-512 filtré sur la version MC +
+le loader courants, téléchargement vérifié (SHA-512) dans `<gameDir>/.autoupdate/staging/`, puis swap
+des jars **à la fermeture du jeu** (un process janitor détaché finit le swap si le jar est verrouillé,
+cas Windows) ; réconciliation au démarrage suivant. MC-agnostique et mapping-agnostique (aucune
+dépendance ajoutée).
+
+> La mise à jour réseau est **indépendante** de l'opt-out télémétrie : couper la télémétrie n'arrête
+> pas l'auto-update, et inversement.
+
+**Désactiver / configurer** (dans `config/modchecker.json`, bloc `settings`, ou via propriété système) :
+- `auto_update` (défaut `true`) — couper avec `"auto_update": "false"` ou `-Dautoupdate.enabled=false`.
+- `update_owner` (défaut `Zeffut`) — compte Modrinth dont les mods sont éligibles.
+- `update_all` (défaut `false`) — mettre à jour **tous** les mods Modrinth, pas seulement ceux du compte.
+- `update_exclude` (défaut vide) — liste de slugs/ids de projets à ne jamais mettre à jour, séparés par des virgules.
+
+En environnement de développement, l'auto-update et la télémétrie sont coupés.
+
 ## Tests
 
 - `mvn -f server/pom.xml verify` — 44 tests : protocole (`ModListCodec`/`BanPolicy`/`ModStatus`),
