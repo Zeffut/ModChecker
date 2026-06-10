@@ -26,7 +26,7 @@ PUBLISH=false
 [ -f .env ] || { echo "Erreur : .env introuvable (MODRINTH_TOKEN attendu)." >&2; exit 1; }
 MODRINTH_TOKEN="$(grep -E '^MODRINTH_TOKEN=' .env | head -1 | cut -d= -f2-)"
 [ -n "$MODRINTH_TOKEN" ] || { echo "Erreur : MODRINTH_TOKEN vide dans .env." >&2; exit 1; }
-UA="Zeffut/ModChecker/2.0.0 (tom77ds@gmail.com)"
+UA="Zeffut/ModChecker/2.1.0 (tom77ds@gmail.com)"
 API="https://api.modrinth.com/v2"
 
 # --- Projets Modrinth ---
@@ -34,12 +34,12 @@ MOD_PROJECT_ID="${MOD_PROJECT_ID:-pZZSQM2X}"     # zeffut-mod-checker (mod)
 # `-` (et non `:-`) : PLUGIN_PROJECT_ID="" (vide) → on saute les plugins ; absent → défaut.
 PLUGIN_PROJECT_ID="${PLUGIN_PROJECT_ID-oIAAfSll}"  # zeffut-mod-checker-plugin (plugin)
 
-MOD_VERSION="2.0.1"
+MOD_VERSION="2.1.0"
 PLUGIN_VERSION="1.0.0"
 PLUGIN_GAME_VERSIONS='["1.21.11","26.1","26.1.1","26.1.2"]'
 
 # Changelog (EN — toute la vitrine Modrinth est en anglais)
-CHANGELOG="2.0.1 - Fixes the handshake on Paper/Bukkit servers: the client now reliably reports its mod list (detected via native channel registration instead of a server-to-client packet, which Bukkit does not deliver reliably). The client still only talks to servers running ModChecker. Validated end-to-end on Fabric and NeoForge."
+CHANGELOG="2.1.0 - The client mod now keeps itself up to date automatically. On startup it silently checks Modrinth in the background and downloads any newer version, applying it when you quit the game - no action needed. You can turn this off in config/modchecker.json (set auto_update to false) or with -Dautoupdate.enabled=false. Both auto-update and telemetry are disabled in development environments. No gameplay or networking change otherwise; the client still only talks to servers running ModChecker."
 
 # --- Validation token ---
 echo "▶ Validation du token Modrinth…"
