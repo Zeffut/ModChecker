@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>fr.zeffut</groupId>
     <artifactId>modchecker-parent</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>pom</packaging>
     <properties>
         <maven.compiler.release>21</maven.compiler.release>

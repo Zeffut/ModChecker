@@ -7,7 +7,7 @@
     <parent>
         <groupId>fr.zeffut</groupId>
         <artifactId>modchecker-parent</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
     </parent>
 
     <artifactId>modchecker-velocity</artifactId>
@@ -26,7 +26,7 @@
         <dependency>
             <groupId>fr.zeffut</groupId>
             <artifactId>modchecker-common</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
 
         <!-- Gson (also provided by Velocity, but we shade to be safe) -->

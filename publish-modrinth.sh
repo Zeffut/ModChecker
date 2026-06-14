@@ -26,7 +26,7 @@ PUBLISH=false
 [ -f .env ] || { echo "Erreur : .env introuvable (MODRINTH_TOKEN attendu)." >&2; exit 1; }
 MODRINTH_TOKEN="$(grep -E '^MODRINTH_TOKEN=' .env | head -1 | cut -d= -f2-)"
 [ -n "$MODRINTH_TOKEN" ] || { echo "Erreur : MODRINTH_TOKEN vide dans .env." >&2; exit 1; }
-UA="Zeffut/ModChecker/2.1.0 (tom77ds@gmail.com)"
+UA="Zeffut/ModChecker/2.1.0 (tom77ds@gmail.com)"  # UA libre
 API="https://api.modrinth.com/v2"
 
 # --- Projets Modrinth ---
@@ -35,11 +35,13 @@ MOD_PROJECT_ID="${MOD_PROJECT_ID:-pZZSQM2X}"     # zeffut-mod-checker (mod)
 PLUGIN_PROJECT_ID="${PLUGIN_PROJECT_ID-oIAAfSll}"  # zeffut-mod-checker-plugin (plugin)
 
 MOD_VERSION="2.1.0"
-PLUGIN_VERSION="1.0.0"
+PLUGIN_VERSION="1.0.1"
 PLUGIN_GAME_VERSIONS='["1.21.11","26.1","26.1.1","26.1.2"]'
 
-# Changelog (EN — toute la vitrine Modrinth est en anglais)
-CHANGELOG="2.1.0 - The client mod now keeps itself up to date automatically. On startup it silently checks Modrinth in the background and downloads any newer version, applying it when you quit the game - no action needed. You can turn this off in config/modchecker.json (set auto_update to false) or with -Dautoupdate.enabled=false. Both auto-update and telemetry are disabled in development environments. No gameplay or networking change otherwise; the client still only talks to servers running ModChecker."
+# Changelogs (EN — toute la vitrine Modrinth est en anglais). MOD et PLUGIN ont des
+# changelogs distincts ; on bascule $CHANGELOG avant chaque section d'upload.
+MOD_CHANGELOG="2.1.0 - The client mod now keeps itself up to date automatically. On startup it silently checks Modrinth in the background and downloads any newer version, applying it when you quit the game - no action needed. You can turn this off in config/modchecker.json (set auto_update to false) or with -Dautoupdate.enabled=false. Both auto-update and telemetry are disabled in development environments. No gameplay or networking change otherwise; the client still only talks to servers running ModChecker."
+PLUGIN_CHANGELOG="1.0.1 - Adds a bypass-names allowlist (Paper): players whose names are listed (case-insensitive) skip the mod check entirely - handy for fake players / test bots (FPP) that cannot report their mod list. Set it under bypass-names in config.yml. Also fixes internal analytics so every server-side event is correctly attributed; no change to enforcement behaviour."
 
 # --- Validation token ---
 echo "▶ Validation du token Modrinth…"
@@ -84,6 +86,7 @@ JSON
 
 echo
 echo "▶ MOD → projet $MOD_PROJECT_ID (une version par loader × version MC)"
+CHANGELOG="$MOD_CHANGELOG"
 # Filtre par MOD_VERSION : sinon d'anciens jars laissés dans build/libs seraient republiés.
 for jar in $(find mod/versions -path "*/build/libs/*-${MOD_VERSION}+*.jar" ! -name '*-sources.jar' | sort); do
   node="$(echo "$jar" | sed -E 's#mod/versions/([^/]+)/.*#\1#')"   # ex. 26.1.2-fabric
@@ -94,6 +97,7 @@ done
 
 echo
 echo "▶ PLUGINS → projet ${PLUGIN_PROJECT_ID:-<non défini>}"
+CHANGELOG="$PLUGIN_CHANGELOG"
 if [ -n "$PLUGIN_PROJECT_ID" ]; then
   upload_version "$PLUGIN_PROJECT_ID" "${PLUGIN_VERSION}-paper" "ModChecker ${PLUGIN_VERSION} (Paper/Purpur)" \
     '["paper","purpur"]' "$PLUGIN_GAME_VERSIONS" "server/paper/target/ModChecker-${PLUGIN_VERSION}.jar"
