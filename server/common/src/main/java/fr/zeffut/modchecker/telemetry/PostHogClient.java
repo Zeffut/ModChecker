@@ -18,6 +18,8 @@ public final class PostHogClient {
 
     public static final String API_KEY = "phc_zdMj4p5wo8EvfVApjb2EbfUHJ76zgYGM5wAGz5YJC359";
     public static final String DEFAULT_HOST = "https://eu.i.posthog.com";
+    /** App slug attached to every event so a shared PostHog project can segment by mod. */
+    public static final String APP = "modchecker";
 
     /** Couture de test : implémentation réseau réelle ou mock. */
     public interface Sender { void send(String jsonBody); }
@@ -57,6 +59,7 @@ public final class PostHogClient {
 
     String buildBody(String event, String distinctId, Map<String, Object> properties) {
         Map<String, Object> props = new LinkedHashMap<>();
+        props.put("app", APP);
         props.put("source", source);
         props.put("mc_version", mcVersion);
         props.put("component_version", componentVersion);

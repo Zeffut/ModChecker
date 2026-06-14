@@ -30,6 +30,7 @@ class PostHogClientTest {
         List<String> sink = new ArrayList<>();
         client(true, sink).capture("x", "id", Map.of());
         String body = sink.get(0);
+        assertTrue(body.contains("\"app\":\"modchecker\""), body);
         assertTrue(body.contains("\"source\":\"paper\""), body);
         assertTrue(body.contains("\"mc_version\":\"1.21.11\""), body);
         assertTrue(body.contains("\"component_version\":\"1.0.0\""), body);
