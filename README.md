@@ -21,8 +21,8 @@ Le contrat réseau (handshake serveur→client) est décrit dans [PROTOCOL.md](P
 
 | Composant | Plateforme | Versions Minecraft | Artifact |
 |-----------|-----------|--------------------|----------|
-| Mod client | **Fabric** | 1.21.11, 26.1, 26.1.1, 26.1.2 | `modchecker-fabric-<mc>.jar` |
-| Mod client | **NeoForge** | 1.21.11, 26.1, 26.1.1, 26.1.2 | `modchecker-neoforge-<mc>.jar` |
+| Mod client | **Fabric** | 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 | `modchecker-fabric-<mc>.jar` |
+| Mod client | **NeoForge** | 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 | `modchecker-neoforge-<mc>.jar` |
 | Plugin serveur | **Paper / Purpur** | 1.21.11 → 26.1.2 (un seul jar) | `ModChecker-1.0.0.jar` |
 | Plugin proxy | **Velocity** 3.4.0+ | indépendant de la version MC | `ModChecker-velocity-1.0.0.jar` |
 
@@ -38,7 +38,7 @@ server/           Maven multi-module (protocole partagé)
 ├── paper/        Plugin Bukkit/Paper/Purpur (handshake, /mods, GUI, persistance) — tests MockBukkit
 └── velocity/     Plugin Velocity (enforcement au proxy)
 mod/              Mod client Stonecutter (multi-version × multi-loader Fabric/NeoForge)
-build-all.sh      Matrice : build + tests de TOUT (server + 8 nœuds mod)
+build-all.sh      Matrice : build + tests de TOUT (server + 10 nœuds mod)
 PROTOCOL.md       Contrat réseau figé
 ```
 
@@ -63,7 +63,7 @@ JAVA_HOME=<jdk25> ./gradlew :26.1.2-fabric:build      # nœuds : <mc>-<loader>
 
 ### Tout valider d'un coup
 ```bash
-./build-all.sh                # server (mvn verify) + 8 nœuds mod, échoue si un seul target casse
+./build-all.sh                # server (mvn verify) + 10 nœuds mod, échoue si un seul target casse
 ./build-all.sh --server-only  # uniquement la partie Maven (CI rapide)
 ```
 

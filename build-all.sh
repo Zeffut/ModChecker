@@ -10,9 +10,10 @@
 #      • 26.1-fabric, 26.1-neoforge         (JDK 25 requis — toolchain Gradle)
 #      • 26.1.1-fabric, 26.1.1-neoforge     (JDK 25 requis)
 #      • 26.1.2-fabric, 26.1.2-neoforge     (JDK 25 requis)
+#      • 26.2-fabric, 26.2-neoforge         (JDK 25 requis)
 #
 # Usage :
-#   ./build-all.sh               # Build complet (server + 8 nœuds mod)
+#   ./build-all.sh               # Build complet (server + 10 nœuds mod)
 #   ./build-all.sh --server-only # Uniquement le build Maven server
 #
 # Codes de sortie :
@@ -28,9 +29,24 @@ MOD_DIR="$SCRIPT_DIR/mod"
 
 # JVM de lancement de Gradle, par nœud (Fabric Loom exige que Gradle tourne sur le Java du MC) :
 #   26.x-fabric → JDK 25 ; tout le reste (1.21.11-*, 26.x-neoforge) → JDK 21.
-JDK25_HOME="${JDK25_HOME:-/opt/homebrew/Cellar/openjdk/25.0.2/libexec/openjdk.jdk/Contents/Home}"
-JDK21_HOME="${JDK21_HOME:-/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home}"
-[ -d "$JDK21_HOME" ] || JDK21_HOME="$(/usr/libexec/java_home -v 21 2>/dev/null || echo "$JDK21_HOME")"
+find_jdk_home() {
+  local major="$1" candidate
+  if [ -x /usr/libexec/java_home ]; then
+    /usr/libexec/java_home -v "$major" 2>/dev/null && return 0
+  fi
+  for candidate in /usr/lib/jvm/java-"$major"-openjdk-* /usr/lib/jvm/java-"$major"-*; do
+    if [ -x "$candidate/bin/java" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Explicit JDK*_HOME values take precedence; otherwise discover the platform JDK.
+# A missing JDK 25 is reported per 26.x target with the exact command needed to supply it.
+JDK25_HOME="${JDK25_HOME:-$(find_jdk_home 25 || true)}"
+JDK21_HOME="${JDK21_HOME:-$(find_jdk_home 21 || true)}"
 
 # Couleurs (désactivées si pas de terminal interactif)
 if [ -t 1 ]; then
@@ -77,12 +93,15 @@ build_mod_node() {
   if [[ "$mc_ver" == 26.* && "$loader" == "fabric" ]]; then
     jdk_home="$JDK25_HOME"
   fi
-  if [ ! -d "$jdk_home" ]; then
-    echo -e "${YELLOW}[WARN]${RESET} JDK introuvable ($jdk_home) — nœud $node peut échouer."
+  if [ ! -x "$jdk_home/bin/java" ]; then
+    echo -e "${YELLOW}[WARN]${RESET} JDK $jdk_home introuvable — définissez JDK25_HOME/JDK21_HOME avant de lancer ce nœud."
+    fail "mod/$node (JDK missing)"
+    return
   fi
 
   echo -e "${CYAN}▶ Mod : :${node}:build  (JAVA_HOME=$(basename "$(dirname "$(dirname "$jdk_home")")"))${RESET}"
-  if (cd "$MOD_DIR" && JAVA_HOME="$jdk_home" ./gradlew ":${node}:build" --quiet); then
+  if (cd "$MOD_DIR" && JAVA_HOME="$jdk_home" ./gradlew ":${node}:build" --quiet \
+      -Dorg.gradle.java.installations.paths="$JDK21_HOME,$JDK25_HOME"); then
     pass "mod/$node"
   else
     fail "mod/$node"
@@ -117,7 +136,7 @@ if [ "$SERVER_ONLY" = false ]; then
     build_mod_node "1.21.11-${loader}"
   done
   # Nœuds 26.x (JDK 25 via toolchain Gradle — Phase 4)
-  for mc in 26.1 26.1.1 26.1.2; do
+  for mc in 26.1 26.1.1 26.1.2 26.2; do
     for loader in fabric neoforge; do
       build_mod_node "${mc}-${loader}"
     done
