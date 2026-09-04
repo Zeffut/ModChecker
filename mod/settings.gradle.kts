@@ -26,6 +26,7 @@ stonecutter {
         mc("26.1", "fabric", "neoforge")
         mc("26.1.1", "fabric", "neoforge")
         mc("26.1.2", "fabric", "neoforge")
+        mc("26.2", "fabric", "neoforge")
 
         // Active / default version (also the VCS / checked-out node).
         vcsVersion = "1.21.11-fabric"
