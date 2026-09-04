@@ -23,7 +23,7 @@ jobs:
         run: mvn -B -f server/pom.xml clean verify
 
   mod:
-    name: Mod (Fabric + NeoForge, 4 versions)
+    name: Mod (Fabric + NeoForge, 5 versions)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
         run: |
           set -e
           chmod +x gradlew
-          for mc in 1.21.11 26.1 26.1.1 26.1.2; do
+          for mc in 1.21.11 26.1 26.1.1 26.1.2 26.2; do
             for loader in fabric neoforge; do
               # Fabric Loom exige que Gradle TOURNE sur le Java du MC : 26.x-fabric → JDK 25.
               if [ "$loader" = fabric ] && [ "${mc%%.*}" = 26 ]; then
