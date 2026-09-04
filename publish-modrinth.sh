@@ -23,20 +23,23 @@ PUBLISH=false
 [ "${1:-}" = "--publish" ] && PUBLISH=true
 
 # --- Token ---
-[ -f .env ] || { echo "Erreur : .env introuvable (MODRINTH_TOKEN attendu)." >&2; exit 1; }
-MODRINTH_TOKEN="$(grep -E '^MODRINTH_TOKEN=' .env | head -1 | cut -d= -f2-)"
-[ -n "$MODRINTH_TOKEN" ] || { echo "Erreur : MODRINTH_TOKEN vide dans .env." >&2; exit 1; }
+# Prefer an inherited secret (CI/local secure environment); retain .env as an
+# optional, gitignored fallback for manual use.
+if [ -z "${MODRINTH_TOKEN:-}" ] && [ -f .env ]; then
+  MODRINTH_TOKEN="$(grep -E '^MODRINTH_TOKEN=' .env | head -1 | cut -d= -f2-)"
+fi
+[ -n "${MODRINTH_TOKEN:-}" ] || { echo "Erreur : MODRINTH_TOKEN absent (environnement ou .env attendu)." >&2; exit 1; }
 UA="Zeffut/ModChecker/2.1.0 (tom77ds@gmail.com)"  # UA libre
 API="https://api.modrinth.com/v2"
 
 # --- Projets Modrinth ---
-MOD_PROJECT_ID="${MOD_PROJECT_ID:-pZZSQM2X}"     # zeffut-mod-checker (mod)
+MOD_PROJECT_ID="${MOD_PROJECT_ID:-qQjdBu4k}"     # ModChecker client mod
 # `-` (et non `:-`) : PLUGIN_PROJECT_ID="" (vide) → on saute les plugins ; absent → défaut.
 PLUGIN_PROJECT_ID="${PLUGIN_PROJECT_ID-oIAAfSll}"  # zeffut-mod-checker-plugin (plugin)
 
 MOD_VERSION="2.1.0"
 PLUGIN_VERSION="1.0.1"
-PLUGIN_GAME_VERSIONS='["1.21.11","26.1","26.1.1","26.1.2"]'
+PLUGIN_GAME_VERSIONS='["1.21.11","26.1","26.1.1","26.1.2","26.2"]'
 
 # Changelogs (EN — toute la vitrine Modrinth est en anglais). MOD et PLUGIN ont des
 # changelogs distincts ; on bascule $CHANGELOG avant chaque section d'upload.
@@ -45,14 +48,14 @@ PLUGIN_CHANGELOG="1.0.1 - Adds a bypass-names allowlist (Paper): players whose n
 
 # --- Validation token ---
 echo "▶ Validation du token Modrinth…"
-who="$(curl -fsS -H "Authorization: $MODRINTH_TOKEN" -H "User-Agent: $UA" "$API/user" | sed -n 's/.*"username":"\([^"]*\)".*/\1/p')"
+who="$(curl -fsS -H "Authorization: Bearer $MODRINTH_TOKEN" -H "User-Agent: $UA" "$API/user" | sed -n 's/.*"username":"\([^"]*\)".*/\1/p')"
 [ -n "$who" ] || { echo "Token invalide." >&2; exit 1; }
 echo "  ✔ authentifié : $who"
 
 # Vrai si le numéro de version existe déjà sur le projet (idempotence : évite les doublons).
 version_exists() {
   local project="$1" vnum="$2"
-  curl -fsS -H "Authorization: $MODRINTH_TOKEN" -H "User-Agent: $UA" "$API/project/$project/version" 2>/dev/null \
+  curl -fsS -H "Authorization: Bearer $MODRINTH_TOKEN" -H "User-Agent: $UA" "$API/project/$project/version" 2>/dev/null \
     | python3 -c "import sys,json; sys.exit(0 if any(v['version_number']==sys.argv[1] for v in json.load(sys.stdin)) else 1)" "$vnum"
 }
 
@@ -73,7 +76,7 @@ JSON
   if $PUBLISH; then
     # --form-string (et NON -F) pour le champ data : sinon curl interprète ';' '@' '<' dans le
     # JSON (le changelog contient des ';') et casse le payload → 400 "EOF while parsing string".
-    if curl -fsS -X POST -H "Authorization: $MODRINTH_TOKEN" -H "User-Agent: $UA" \
+    if curl -fsS -X POST -H "Authorization: Bearer $MODRINTH_TOKEN" -H "User-Agent: $UA" \
          --form-string "data=$data" -F "file=@$file" "$API/version" >/dev/null; then
       echo "  ✔ publié : $name"
     else
